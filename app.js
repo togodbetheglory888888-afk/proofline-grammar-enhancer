@@ -41,11 +41,23 @@
     };
   }
 
-  function isTestingMode() {
-    const cfg = getConfig();
+function isTestingMode() {
+  const cfg = getConfig();
 
-    return cfg.requireOnlineActivation === false;
+  /*
+    TESTING MODE
+
+    If online activation is disabled OR no license
+    server URL has been configured, allow the app
+    to run locally for testing.
+  */
+
+  if (cfg.requireOnlineActivation === false) {
+    return true;
   }
+
+  return false;
+}
 
   /* =========================================================
      DEVICE IDENTIFICATION

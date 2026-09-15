@@ -1,0 +1,126 @@
+(function(){"use strict";
+const $=id=>document.getElementById(id);
+const el={home:$('homeView'),work:$('workspaceView'),editor:$('editor'),backdrop:$('backdrop'),scroll:$('editorScroll'),suggestions:$('suggestionsList'),suggestionsCount:$('suggestionsCount'),score:$('scoreValue'),metrics:$('metrics'),word:$('wordCount'),chars:$('charCount'),time:$('readingTime'),level:$('readingLevel'),cursor:$('cursorPos'),badge:$('analyzingBadge'),file:$('fileInput'),modal:$('documentsModal'),enhanceModal:$('enhancerModal'),docs:$('documentsList'),fileStatus:$('fileStatus'),title:$('docTitleBtn')};
+const state={docs:[],active:null,suggestions:[],filter:'All',timer:null,analysisId:0,ignored:new Set(),enhanced:null,licensed:false,deviceId:null};
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function activeDoc(){return state.docs.find(d=>d.id===state.active)}
+
+function getDeviceId(){
+  const key='proofline_device_id';
+  let id=localStorage.getItem(key);
+  if(!id){
+    id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('dev-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2));
+    localStorage.setItem(key,id);
+  }
+  return id;
+}
+function getDeviceType(){
+  const ua=navigator.userAgent||'';
+  const mobile=/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua);
+  if(/iPad/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints>1)) return 'TABLET';
+  if(/Android/i.test(ua) && !/Mobile/i.test(ua)) return 'TABLET';
+  if(mobile) return 'CELLPHONE';
+  return 'COMPUTER';
+}
+function getDeviceLabel(){
+  const type=getDeviceType();
+  const platform=navigator.platform||'Unknown platform';
+  return type+' / '+platform;
+}
+function setLicenseMessage(msg,type=''){
+  const box=$('licenseMessage'); if(!box)return;
+  box.textContent=msg; box.className='license-message '+type;
+}
+function isLicensed(){
+  return localStorage.getItem('proofline_license_status')==='activated';
+}
+async function activateLicense(){
+  const input=$('licenseCode'), code=(input.value||'').replace(/\D/g,'');
+  input.value=code;
+  if(!/^\d{7}$/.test(code)){setLicenseMessage('Enter exactly 7 digits.','error');return;}
+  const cfg=window.PROOFLINE_LICENSE_CONFIG||{};
+  if(!cfg.apiUrl){
+    setLicenseMessage('License service is not configured yet. Set apiUrl in config.js before selling.','error');
+    return;
+  }
+  const btn=$('activateBtn'); btn.disabled=true; setLicenseMessage('Checking your license online…','busy');
+  try{
+    const res=await fetch(cfg.apiUrl.replace(/\/$/,'')+'/activate',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code,deviceId:getDeviceId(),deviceType:getDeviceType(),deviceLabel:getDeviceLabel(),product:cfg.product||'PROOFLINE-GRAMMAR-49'})
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.ok) throw new Error(data.message||'Activation was not accepted.');
+    localStorage.setItem('proofline_license_status','activated');
+    localStorage.setItem('proofline_license_code',code);
+    localStorage.setItem('proofline_license_device',getDeviceId());
+    state.licensed=true;
+    $('licenseView').classList.add('hidden');
+    setLicenseMessage('');
+    showHome();
+  }catch(e){
+    setLicenseMessage(e.message||'Could not contact the license service. Make sure you are online.','error');
+  }finally{btn.disabled=false;}
+}
+function initLicenseGate(){
+  state.deviceId=getDeviceId();
+  state.licensed=isLicensed();
+  if(state.licensed){$('licenseView').classList.add('hidden');showHome();return;}
+  $('licenseView').classList.remove('hidden'); $('homeView').classList.add('hidden'); $('workspaceView').classList.add('hidden');
+  $('activateBtn').onclick=activateLicense;
+  $('licenseCode').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,7)});
+  $('licenseCode').addEventListener('keydown',e=>{if(e.key==='Enter')activateLicense()});
+}
+
+function showWorkspace(){el.home.classList.add('hidden');el.work.classList.remove('hidden');setTimeout(()=>el.editor.focus(),30)}
+function showHome(){el.work.classList.add('hidden');el.home.classList.remove('hidden')}
+function newDoc(name='Untitled document',text=''){const d={id:uid(),name,text};state.docs.push(d);state.active=d.id;state.ignored.clear();el.editor.value=text;el.title.textContent=name;showWorkspace();renderDocs();scheduleAnalysis(true)}
+function renderDocs(){el.docs.innerHTML='';if(!state.docs.length){el.docs.innerHTML='<div class="empty">No documents yet.<br>Create a document or choose files.</div>';return}state.docs.forEach(d=>{const b=document.createElement('button');b.className='doc-row';b.innerHTML=`<span>${esc(d.name)}</span><small>${(d.text.match(/\S+/g)||[]).length} words</small>`;b.onclick=()=>{state.active=d.id;el.editor.value=d.text;el.title.textContent=d.name;state.ignored.clear();closeModal('documentsModal');scheduleAnalysis(true)};el.docs.appendChild(b)})}
+function scheduleAnalysis(immediate=false){clearTimeout(state.timer);if(immediate)runAnalysis();else{state.badge=el.badge;el.badge.classList.remove('hidden');state.timer=setTimeout(runAnalysis,220)}}
+function runAnalysis(){const id=++state.analysisId;const d=activeDoc();if(!d)return;el.badge.classList.remove('hidden');const text=el.editor.value;setTimeout(()=>{if(id!==state.analysisId)return;const result=window.GrammarEngine.analyzeDocument(text);state.suggestions=result.suggestions.filter(s=>!state.ignored.has(ignoreKey(s)));d.text=text;render(result);el.badge.classList.add('hidden')},0)}
+function ignoreKey(s){return [s.ruleId,s.start,s.original,s.replacement].join('|')}
+function render(result){const s=state.suggestions;el.suggestionsCount.textContent=s.length;el.score.textContent=result.score;el.word.textContent=`${result.words} words`;el.chars.textContent=`${el.editor.value.length} characters`;el.time.textContent=`${result.readingTime} sec read`;el.level.textContent=result.score>=90?'Strong writing':result.score>=75?'Developing writing':'Needs revision';el.metrics.innerHTML=`<div class="metric"><b>${result.errorCount}</b><span>grammar errors</span></div><div class="metric"><b>${result.warningCount}</b><span>warnings</span></div><div class="metric"><b>${result.sentences}</b><span>sentences</span></div><div class="metric"><b>${result.paragraphs}</b><span>paragraphs</span></div>`;const counts={Grammar:0,Spelling:0,Punctuation:0,Style:0,Vocabulary:0};s.forEach(x=>{if(counts[x.category]!==undefined)counts[x.category]++});$('allCount').textContent=s.length;$('grammarCount').textContent=counts.Grammar;$('spellingCount').textContent=counts.Spelling;$('punctuationCount').textContent=counts.Punctuation;$('styleCount').textContent=counts.Style;$('vocabularyCount').textContent=counts.Vocabulary;renderSuggestions();renderBackdrop();updateCursor()}
+function renderSuggestions(){
+  el.suggestions.innerHTML='';
+  let list=state.filter==='All'?state.suggestions:state.suggestions.filter(s=>s.category===state.filter);
+  if(!list.length){el.suggestions.innerHTML='<div class="empty">No issues in this category.<br><br>Keep writing — Proofline checks as you type.</div>';return}
+  list.forEach((s)=>{
+    const d=document.createElement('div'); d.className='suggestion';
+    const alt=s.alternatives&&s.alternatives.length?`<div class="s-alt"><b>Word alternatives</b><div class="alt-buttons">${s.alternatives.map((a,i)=>`<button class="alt-btn" data-alt="${i}">${esc(a)}</button>`).join('')}</div></div>`:'';
+    d.innerHTML=`<div class="s-head"><span class="s-title">${esc(s.title)}</span><span class="s-sev ${s.severity}">${s.severity}</span></div>
+      <div class="s-original">${esc(s.original)}</div>
+      ${s.replacement?`<div class="s-replacement">→ ${esc(s.replacement)}</div>`:''}
+      <div class="s-message">${esc(s.message||'Review this wording.')}</div>${alt}
+      ${s.replacement?'<button class="apply-suggestion">Apply suggestion</button>':''}`;
+    d.addEventListener('click',e=>{
+      const altBtn=e.target.closest('.alt-btn');
+      if(altBtn){const idx=Number(altBtn.dataset.alt);applySuggestion({...s,replacement:s.alternatives[idx]});return;}
+      if(e.target.closest('.apply-suggestion')){applySuggestion(s);return;}
+      if(e.target===d||e.target.closest('.s-head,.s-original,.s-replacement,.s-message'))focusSuggestion(s);
+    });
+    el.suggestions.appendChild(d);
+  });
+}
+function renderBackdrop(){const text=el.editor.value;const list=state.suggestions.filter(s=>s.end>s.start).slice().sort((a,b)=>a.start-b.start);let html='',p=0;list.forEach(s=>{if(s.start<p)return;html+=esc(text.slice(p,s.start));const active=state.filter==='All'||s.category===state.filter;if(active)html+=`<span class="hl ${s.severity}" data-start="${s.start}" data-end="${s.end}">${esc(text.slice(s.start,s.end))}</span>`;else html+=esc(text.slice(s.start,s.end));p=s.end});html+=esc(text.slice(p));el.backdrop.innerHTML=html+'\n';syncScroll()}
+function syncScroll(){el.backdrop.scrollTop=el.scroll.scrollTop;el.backdrop.scrollLeft=el.scroll.scrollLeft}
+function focusSuggestion(s){el.editor.focus();el.editor.setSelectionRange(s.start,s.end);const line=s.start?el.editor.value.slice(0,s.start).split('\n').length:1;const approx=Math.max(0,(line-1)*30);el.scroll.scrollTop=approx}
+function applySuggestion(s){if(typeof s.replacement!=='string')return;const t=el.editor.value;el.editor.value=t.slice(0,s.start)+s.replacement+t.slice(s.end);scheduleAnalysis(true)}
+function updateCursor(){const p=el.editor.selectionStart||0;const before=el.editor.value.slice(0,p);const line=before.split('\n').length;const col=before.length-(before.lastIndexOf('\n')+1)+1;el.cursor.textContent=`Ln ${line}, Col ${col}`}
+function copyText(){navigator.clipboard&&navigator.clipboard.writeText(el.editor.value).then(()=>toast('Copied text')).catch(()=>fallbackCopy())}
+function fallbackCopy(){el.editor.select();try{document.execCommand('copy');toast('Copied text')}catch(e){toast('Copy is not available in this browser')}}
+function toast(msg){const x=document.createElement('div');x.textContent=msg;x.style.cssText='position:fixed;right:20px;bottom:20px;background:#182033;color:#fff;padding:10px 14px;border-radius:9px;font-size:12px;z-index:99';document.body.appendChild(x);setTimeout(()=>x.remove(),1800)}
+function openModal(id){$(id).classList.remove('hidden')}
+function closeModal(id){$(id).classList.add('hidden')}
+async function readFile(file){const ext=file.name.toLowerCase().split('.').pop();if(['txt','text','log','md','markdown','csv','html','htm'].includes(ext)){let t=await file.text();if(ext==='html'||ext==='htm'){const doc=new DOMParser().parseFromString(t,'text/html');t=doc.body?doc.body.innerText:t}return t}if(ext==='docx'){if(!window.mammoth)throw new Error('DOCX reader library is missing.');const ab=await file.arrayBuffer();const r=await window.mammoth.extractRawText({arrayBuffer:ab});return r.value}if(ext==='pdf'){if(!window.pdfjsLib)throw new Error('PDF reader library is missing.');window.pdfjsLib.GlobalWorkerOptions.workerSrc='libs/pdf.worker.min.js';const pdf=await window.pdfjsLib.getDocument({data:await file.arrayBuffer(),disableWorker:true}).promise;let out=[];for(let i=1;i<=pdf.numPages;i++){const page=await pdf.getPage(i);const c=await page.getTextContent();out.push(c.items.map(x=>x.str).join(' '))}return out.join('\n\n')}throw new Error('Unsupported file type')}
+async function importFiles(files,fromHome=false){if(!files.length)return;if(!fromHome)openModal('documentsModal');el.fileStatus.textContent=`Reading ${files.length} file${files.length>1?'s':''} locally…`;let ok=0;for(const f of files){try{const t=await readFile(f);const d=createImported(f.name,t);ok++;if(ok===1){state.active=d.id;el.editor.value=d.text;el.title.textContent=d.name;showWorkspace()}}catch(e){console.error(e);el.fileStatus.textContent+=`\n${f.name}: ${e.message}`}renderDocs()}if(ok){closeModal('documentsModal');state.ignored.clear();scheduleAnalysis(true);toast(`${ok} file${ok>1?'s':''} opened`)}}
+function createImported(name,text){const d={id:uid(),name,text:text||''};state.docs.push(d);return d}
+function saveAs(){const d=activeDoc();if(!d)return;const blob=new Blob([el.editor.value],{type:'text/plain;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(d.name.replace(/\.[^.]+$/,'')||'proofline-document')+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function enhance(){const d=activeDoc();if(!d)return;const mode=$('enhancerMode').value;const r=window.EnhancerEngine.enhance(el.editor.value,mode);state.enhanced=r; $('enhanceOriginal').textContent=el.editor.value;$('enhanceResult').textContent=r.text;$('enhanceChanges').innerHTML=r.changes.length?r.changes.map(c=>`<div class="change"><del>${esc(c.from)}</del> → <ins>${esc(c.to)}</ins><br><span>${esc(c.reason)}</span></div>`).join(''):'<div class="empty">No local enhancement changes suggested.</div>';openModal('enhancerModal')}
+// events
+$('getStartedBtn').onclick=()=>newDoc('Untitled document','');$('blankDocBtn').onclick=()=>newDoc('Untitled document','');$('homeUploadBtn').onclick=()=>{$('fileInput').dataset.fromHome='1';$('fileInput').click()};$('documentsBtn').onclick=()=>{renderDocs();openModal('documentsModal')};$('uploadBtn').onclick=()=>$('fileInput').click();$('newDocBtn').onclick=()=>{closeModal('documentsModal');newDoc()};$('fileInput').onchange=e=>{const fromHome=e.target.dataset.fromHome==='1';delete e.target.dataset.fromHome;importFiles([...e.target.files],fromHome);e.target.value=''};$('brandHomeBtn').onclick=()=>showHome();$('copyBtn').onclick=copyText;$('saveAsBtn').onclick=saveAs;$('enhanceBtn').onclick=enhance;$('applyEnhanceBtn').onclick=()=>{if(state.enhanced){el.editor.value=state.enhanced.text;closeModal('enhancerModal');scheduleAnalysis(true)}};$('enhancerMode').onchange=enhance;el.editor.addEventListener('input',()=>scheduleAnalysis(false));el.editor.addEventListener('keyup',updateCursor);el.editor.addEventListener('click',updateCursor);el.scroll.addEventListener('scroll',syncScroll);document.querySelectorAll('.nav-item[data-filter]').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav-item[data-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.filter=b.dataset.filter;renderSuggestions();renderBackdrop()});document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));$('dropZone').addEventListener('dragover',e=>{e.preventDefault();$('dropZone').style.background='#f2f0ff'});$('dropZone').addEventListener('dragleave',()=>{$('dropZone').style.background=''});$('dropZone').addEventListener('drop',e=>{e.preventDefault();$('dropZone').style.background='';importFiles([...e.dataTransfer.files],false)});document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();saveAs()}if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();runAnalysis()}});el.editor.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const s=el.editor.selectionStart,e2=el.editor.selectionEnd;el.editor.value=el.editor.value.slice(0,s)+'\t'+el.editor.value.slice(e2);el.editor.selectionStart=el.editor.selectionEnd=s+1;scheduleAnalysis(false)}});
+// suggestion click-to-apply using double click
+el.suggestions.addEventListener('dblclick',e=>{let card=e.target.closest('.suggestion');if(!card)return;const idx=[...el.suggestions.children].indexOf(card);const list=state.filter==='All'?state.suggestions:state.suggestions.filter(s=>s.category===state.filter);if(list[idx])applySuggestion(list[idx])});
+// License gate first; after activation the existing landing page remains unchanged.
+initLicenseGate();
+})();

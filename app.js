@@ -167,19 +167,35 @@ function isTestingMode() {
       the license server.
     */
 
-    if (isTestingMode()) {
-      state.licensed = true;
+const input = el.licenseCode;
 
-      if (el.licenseView) {
-        el.licenseView.classList.add("hidden");
-      }
+if (!input) return;
 
-      setLicenseMessage("");
+const code = (input.value || "").replace(/\D/g, "");
 
-      showHome();
+input.value = code;
 
-      return;
-    }
+if (!/^\d{7}$/.test(code)) {
+  setLicenseMessage("Enter exactly 7 digits.", "error");
+  return;
+}
+
+/* TESTING MODE */
+if (isTestingMode()) {
+  localStorage.setItem("proofline_test_license", code);
+
+  state.licensed = true;
+
+  if (el.licenseView) {
+    el.licenseView.classList.add("hidden");
+  }
+
+  setLicenseMessage("");
+
+  showHome();
+
+  return;
+}
 
     const input = el.licenseCode;
 

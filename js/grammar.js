@@ -267,25 +267,9 @@ function findSpelling(text){const a=[];for(const x of words(text)){const hit=spe
 function findCapitalization(text){const a=[];let m;const cap=/(^|[.!?]\s+)([a-z])/g;while((m=cap.exec(text))){const p=m.index+m[1].length;add(a,make("Grammar","Capitalization",p,p+1,m[2],m[2].toUpperCase(),"Begin a sentence with a capital letter.","error",.97,"capitalization"))}const ir=/\bi\b/g;while((m=ir.exec(text)))add(a,make("Grammar","Capitalization",m.index,m.index+1,"i","I","The pronoun “I” is capitalized.","error",.99,"capital-i"));return a}
 function findStyle(text){const a=[];let m;const rs=[[/\ba lot of\b/gi,"many","A more concise alternative is “many”."],[/\bin order to\b/gi,"to","“To” is usually sufficient here."],[/\bdue to the fact that\b/gi,"because","“Because” is more concise."],[/\bat this point in time\b/gi,"currently","Use a more direct time expression."],[/\bmake a decision\b/gi,"decide","Use the direct verb “decide”."]];for(const r of rs){while((m=r[0].exec(text)))add(a,make("Vocabulary","Clarity",m.index,m.index+m[0].length,m[0],r[1],r[2],"suggestion",.9,"wordiness"))}return a}
 function findPunctuation(text){const a=[];let m;const rs=[[/ {2,}/g," ","Use one space between words.","Spacing"],[/\s+([,.!?;:])/g,null,"Do not place a space before punctuation.","Punctuation"],[/([,.!?;:])([A-Za-z])/g,null,"Add a space after punctuation when another word follows.","Punctuation"]];for(const r of rs){while((m=r[0].exec(text))){let rep=r[1];if(rep===null)rep=m[1]+(r[0].source.includes("\\)\\([A-Za-z]")?" "+m[2]:"");add(a,make("Punctuation",r[3],m.index,m.index+m[0].length,m[0],rep,r[2],"warning",.97,"punctuation"))}}return a}
-
-function findVocabulary(text){
- const a=[]; if(!global.EnhancerEngine||!global.EnhancerEngine.alternativesFor)return a;
- for(const x of words(text)){
-   const alts=global.EnhancerEngine.alternativesFor(x.w);
-   if(!alts.length) continue;
-   // Avoid suggesting replacements for function words or very short words.
-   if(x.low.length<3 || determiners.has(x.low) || auxiliaries.has(x.low) || modals.has(x.low)) continue;
-   add(a,make("Vocabulary","Word suggestion",x.start,x.end,x.w,alts[0],
-     "Consider a more precise or varied word. Choose from the alternatives below.",
-     "suggestion",.74,"vocabulary-alternative"));
-   const s=a[a.length-1]; s.alternatives=alts;
- }
- return a;
-}
-
-function analyze(t){const a=[];if(!t||!t.trim())return a;[findSpelling,findCapitalization,findVocabulary,findNumberVerbAgreement,findPronounAgreement,findNounAgreement,findComplexNounVerbAgreement,findMainVerbAgreement,findEachEvery,findOneOf,findUncountable,findArticles,findModals,findDoForms,findPOS,findCommon,findConfused,findStyle,findPunctuation].forEach(fn=>a.push(...fn(t)));return finalize(a)}
+function analyze(t){const a=[];if(!t||!t.trim())return a;[findSpelling,findCapitalization,findNumberVerbAgreement,findPronounAgreement,findNounAgreement,findComplexNounVerbAgreement,findMainVerbAgreement,findEachEvery,findOneOf,findUncountable,findArticles,findModals,findDoForms,findPOS,findCommon,findConfused,findStyle,findPunctuation].forEach(fn=>a.push(...fn(t)));return finalize(a)}
 function finalize(a){const seen=new Set(),out=[];for(const s of a){const key=[s.start,s.end,s.original,s.replacement,s.ruleId].join("|");if(seen.has(key))continue;seen.add(key);out.push(s)}out.sort((x,y)=>x.start-y.start||y.confidence-x.confidence);const kept=[];for(const s of out){const overlap=kept.find(k=>s.start<k.end&&s.end>k.start);if(!overlap){kept.push(s);continue}if(s.confidence>overlap.confidence+.04){kept[kept.indexOf(overlap)]=s}}return kept.sort((x,y)=>x.start-y.start)}
 function analyzePOS(t){const result=[];for(const w of words(t)){let pos="word";if(modals.has(w.low))pos="modal";else if(auxiliaries.has(w.low))pos="auxiliary";else if(/ly$/.test(w.low))pos="adverb";else if(/ing$|ed$/.test(w.low))pos="verb/participle";else if(/ous$|ful$|less$|able$|ive$|al$/.test(w.low))pos="adjective";else if(determiners.has(w.low))pos=(w.low==="a"||w.low==="an"||w.low==="the")?"article":"determiner";else if(/^(he|she|it|they|we|you|i|me|him|her|us|them)$/.test(w.low))pos="pronoun";else if(/^(in|on|at|by|for|from|with|to|of|about|under|over|between|into|through)$/.test(w.low))pos="preposition";else if(/^(and|but|or|nor|for|so|yet|because|although|while|if|when)$/.test(w.low))pos="conjunction";result.push({word:w.w,pos,start:w.start,end:w.end})}return result}
 function analyzeDocument(t){const suggestions=analyze(t),wc=words(t).length,sc=sentences(t).length,paras=t.split(/\n\s*\n/).filter(x=>x.trim()).length,errors=suggestions.filter(x=>x.severity==="error").length,warnings=suggestions.filter(x=>x.severity==="warning").length;const score=Math.max(0,Math.min(100,Math.round(100-(errors*4+warnings*1.7+suggestions.filter(x=>x.severity==="suggestion").length*.6)/Math.max(1,wc)*25)));return {suggestions,score,words:wc,sentences:sc,paragraphs:paras,readingTime:Math.max(0,Math.ceil(wc/200*60)),errorCount:errors,warningCount:warnings,pos:analyzePOS(t)}}
-global.GrammarEngine={analyze,analyzeDocument,analyzePOS,baseForm:base,thirdPerson:third,findNumberVerbAgreement,findVocabulary};
+global.GrammarEngine={analyze,analyzeDocument,analyzePOS,baseForm:base,thirdPerson:third,findNumberVerbAgreement};
 })(typeof window!=="undefined"?window:globalThis);

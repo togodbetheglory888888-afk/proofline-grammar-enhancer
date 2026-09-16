@@ -3,7 +3,7 @@
 
   window.PROOFLINE_LICENSE_CONFIG = {
     apiUrl: "",
-    requireOnlineActivation: true,
+    requireOnlineActivation: false,
     product: "PROOFLINE-GRAMMAR-49"
   };
 })();

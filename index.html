@@ -16,7 +16,7 @@
   </noscript>
 
   <div id="app">
-    <!-- License view -->
+    <!-- License activation view -->
     <section id="licenseView" class="license-view" aria-labelledby="licenseTitle">
       <div class="license-shell">
         <header class="landing-nav">
@@ -34,7 +34,7 @@
           <div class="hero-kicker">LICENSE ACTIVATION</div>
           <h1 id="licenseTitle">Unlock your writing assistant.</h1>
           <p class="license-copy">
-            Enter your seven-digit Proofline code to continue. The activation is remembered in this browser.
+            Enter your seven-digit Proofline code to continue. Activation is remembered in this browser.
           </p>
 
           <label class="license-label" for="licenseCode">Seven-digit activation code</label>
@@ -59,7 +59,7 @@
 
           <div id="licenseMessage" class="license-message" role="status" aria-live="polite"></div>
           <div id="licenseHelp" class="license-help">
-            Need to use a new browser or computer? Contact the seller for license recovery or transfer assistance.
+            Need to use another browser or computer? Contact the seller for license recovery or transfer assistance.
           </div>
         </main>
 
@@ -99,7 +99,7 @@
             </button>
             <button id="homeUploadBtn" class="btn secondary big" type="button">
               <span class="action-icon" aria-hidden="true">↥</span>
-              Upload a file
+              Upload a text file
             </button>
           </div>
 
@@ -138,8 +138,8 @@
           <article>
             <div class="feature-icon" aria-hidden="true">↥</div>
             <div>
-              <b>Work with files</b>
-              <span>Open TXT, Markdown, HTML, CSV, DOCX, and text-based PDF files.</span>
+              <b>Work with text files</b>
+              <span>Open TXT, Markdown, HTML, CSV, and other text-based files.</span>
             </div>
           </article>
         </section>
@@ -151,7 +151,7 @@
       </div>
     </section>
 
-    <!-- Workspace -->
+    <!-- Writing workspace -->
     <section id="workspaceView" class="workspace hidden" aria-label="Proofline writing workspace">
       <header class="topbar">
         <div class="brand-area">
@@ -227,12 +227,12 @@
     </section>
   </div>
 
-  <!-- Hidden file input -->
+  <!-- Text-file input -->
   <input
     id="fileInput"
     type="file"
     hidden
-    accept=".txt,.text,.log,.md,.markdown,.html,.htm,.csv,.docx,.pdf,text/plain,text/markdown,text/html,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+    accept=".txt,.text,.log,.md,.markdown,.html,.htm,.csv,text/plain,text/markdown,text/html,text/csv"
   >
 
   <!-- Documents modal -->
@@ -244,16 +244,12 @@
       </div>
       <div class="modal-body">
         <div id="dropZone" class="drop-zone">
-          <strong>Drop a file here</strong>
+          <strong>Drop a text file here</strong>
           <span>or</span>
           <button id="uploadBtn" class="btn secondary" type="button">Choose a file</button>
-          <small>TXT · MD · HTML · CSV · DOCX · PDF</small>
+          <small>TXT · MD · HTML · CSV</small>
         </div>
         <div id="fileStatus" class="file-status" role="status" aria-live="polite"></div>
-        <h3>Supported document types</h3>
-        <div class="documents-help">
-          <p>TXT, Markdown, HTML, and CSV are opened as text. DOCX requires Mammoth. PDF requires PDF.js and selectable text.</p>
-        </div>
         <div id="documentsList" class="documents-list"></div>
       </div>
     </div>
@@ -308,13 +304,10 @@
   <!-- Toast notifications -->
   <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
-  <!-- Application scripts. Keep this exact order. -->
+  <!-- Essential application scripts. Keep this exact order. -->
   <script src="config.js"></script>
-  <script src="libs/mammoth.browser.min.js"></script>
-  <script src="libs/pdf.min.js"></script>
-  <script src="data/dictionary.js"></script>
-  <script src="js/grammar.js"></script>
-  <script src="js/enhancer.js"></script>
-  <script src="app.js"></script>
+  <script src="js/grammar.js?v=4"></script>
+  <script src="js/enhancer.js?v=4"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

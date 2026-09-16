@@ -155,77 +155,182 @@ function isTestingMode() {
      LICENSE ACTIVATION
      ========================================================= */
 
-  async function activateLicense() {
-    /*
-      TESTING MODE
+async function activateLicense() {
 
-      If config.js contains:
+  const input = el.licenseCode;
 
-      requireOnlineActivation: false
-
-      the application opens without contacting
-      the license server.
-    */
-
-const input = el.licenseCode;
-
-if (!input) return;
-
-const code = (input.value || "").replace(/\D/g, "");
-
-input.value = code;
-
-if (!/^\d{7}$/.test(code)) {
-  setLicenseMessage("Enter exactly 7 digits.", "error");
-  return;
-}
-
-/* TESTING MODE */
-if (isTestingMode()) {
-  localStorage.setItem("proofline_test_license", code);
-
-  state.licensed = true;
-
-  if (el.licenseView) {
-    el.licenseView.classList.add("hidden");
+  if (!input) {
+    console.error("Proofline: licenseCode element not found.");
+    return;
   }
 
-  setLicenseMessage("");
+  const code = (input.value || "")
+    .replace(/\D/g, "")
+    .slice(0, 7);
 
-  showHome();
+  input.value = code;
 
-  return;
-}
+  if (!/^\d{7}$/.test(code)) {
+    setLicenseMessage(
+      "Enter exactly 7 digits.",
+      "error"
+    );
+    return;
+  }
 
-    const input = el.licenseCode;
+  /*
+    TESTING MODE
 
-    if (!input) return;
+    config.js currently contains:
 
-    const code = (input.value || "").replace(/\D/g, "");
+    requireOnlineActivation: false
 
-    input.value = code;
+    Therefore, accept the 7-digit code locally.
+  */
 
-    if (!/^\d{7}$/.test(code)) {
-      setLicenseMessage("Enter exactly 7 digits.", "error");
-      return;
+  if (isTestingMode()) {
+
+    localStorage.setItem(
+      "proofline_license_status",
+      "activated"
+    );
+
+    localStorage.setItem(
+      "proofline_license_code",
+      code
+    );
+
+    localStorage.setItem(
+      "proofline_license_device",
+      getDeviceId()
+    );
+
+    state.licensed = true;
+
+    setLicenseMessage("");
+
+    if (el.licenseView) {
+      el.licenseView.classList.add("hidden");
     }
 
-    const cfg = getConfig();
+    if (el.workspaceView) {
+      el.workspaceView.classList.add("hidden");
+    }
 
-    if (!cfg.apiUrl) {
-      setLicenseMessage(
-        "License service is not configured yet. Set apiUrl in config.js before selling.",
-        "error"
+    if (el.homeView) {
+      el.homeView.classList.remove("hidden");
+    }
+
+    showHome();
+
+    showToast(
+      "Proofline activated successfully."
+    );
+
+    return;
+  }
+
+  const cfg = getConfig();
+
+  if (!cfg.apiUrl) {
+    setLicenseMessage(
+      "License service is not configured yet.",
+      "error"
+    );
+    return;
+  }
+
+  const btn = el.activateBtn;
+
+  if (btn) {
+    btn.disabled = true;
+  }
+
+  setLicenseMessage(
+    "Checking your license online…",
+    "busy"
+  );
+
+  try {
+
+    const response = await fetch(
+      cfg.apiUrl.replace(/\/$/, "") + "/activate",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          code: code,
+          deviceId: getDeviceId(),
+          deviceType: getDeviceType(),
+          deviceLabel: getDeviceLabel(),
+          product:
+            cfg.product || "PROOFLINE-GRAMMAR-49"
+        })
+      }
+    );
+
+    const data =
+      await response.json().catch(() => ({}));
+
+    if (!response.ok || !data.ok) {
+      throw new Error(
+        data.message ||
+        "Activation was not accepted."
       );
-
-      return;
     }
 
-    const btn = el.activateBtn;
+    localStorage.setItem(
+      "proofline_license_status",
+      "activated"
+    );
+
+    localStorage.setItem(
+      "proofline_license_code",
+      code
+    );
+
+    localStorage.setItem(
+      "proofline_license_device",
+      getDeviceId()
+    );
+
+    state.licensed = true;
+
+    if (el.licenseView) {
+      el.licenseView.classList.add("hidden");
+    }
+
+    setLicenseMessage("");
+
+    showHome();
+
+    showToast(
+      "Proofline activated successfully."
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Proofline activation error:",
+      error
+    );
+
+    setLicenseMessage(
+      error.message ||
+      "Could not contact the license service. Make sure you are online.",
+      "error"
+    );
+
+  } finally {
 
     if (btn) {
-      btn.disabled = true;
+      btn.disabled = false;
     }
+
+  }
+}
 
     setLicenseMessage(
       "Checking your license online…",

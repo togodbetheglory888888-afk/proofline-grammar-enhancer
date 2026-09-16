@@ -1,32 +1,60 @@
-javascript
 (function () {
   "use strict";
 
   /* =========================================================
      PROOFLINE GRAMMAR ENHANCER
-     Complete Application Controller
+     Application Controller
      ========================================================= */
 
   const $ = (id) => document.getElementById(id);
 
-  const el = {
+  const elements = {
     licenseView: $("licenseView"),
     homeView: $("homeView"),
     workspaceView: $("workspaceView"),
+
     licenseCode: $("licenseCode"),
     activateBtn: $("activateBtn"),
-    licenseMessage: $("licenseMessage")
+    licenseMessage: $("licenseMessage"),
+
+    editor: $("editor"),
+    backdrop: $("backdrop"),
+    editorScroll: $("editorScroll"),
+
+    fileInput: $("fileInput"),
+    dropZone: $("dropZone"),
+    fileStatus: $("fileStatus"),
+
+    documentsModal: $("documentsModal"),
+    enhancerModal: $("enhancerModal"),
+
+    suggestionsList: $("suggestionsList"),
+    suggestionsCount: $("suggestionsCount"),
+
+    scoreValue: $("scoreValue"),
+    metrics: $("metrics"),
+    analyzingBadge: $("analyzingBadge"),
+
+    wordCount: $("wordCount"),
+    charCount: $("charCount"),
+    readingTime: $("readingTime"),
+    readingLevel: $("readingLevel"),
+    cursorPos: $("cursorPos"),
+
+    docTitleBtn: $("docTitleBtn")
   };
 
   const state = {
     licensed: false,
     deviceId: "",
     text: "",
-    fileName: "Untitled Document",
+    fileName: "Untitled document",
     analysis: null,
-    selectedSuggestion: null,
     analysisTimer: null,
-    isAnalyzing: false
+    isAnalyzing: false,
+    activeFilter: "All",
+    enhancedText: "",
+    documents: []
   };
 
   /* =========================================================
@@ -36,73 +64,64 @@ javascript
   function getConfig() {
     return window.PROOFLINE_LICENSE_CONFIG || {
       apiUrl: "",
-      requireOnlineActivation: true,
+      requireOnlineActivation: false,
       product: "PROOFLINE-GRAMMAR-49"
     };
   }
 
-function isTestingMode() {
-  const cfg = getConfig();
-
-  /*
-    TESTING MODE
-
-    If online activation is disabled OR no license
-    server URL has been configured, allow the app
-    to run locally for testing.
-  */
-
-  if (cfg.requireOnlineActivation === false) {
-    return true;
+  function isTestingMode() {
+    return getConfig().requireOnlineActivation === false;
   }
-
-  return false;
-}
 
   /* =========================================================
      DEVICE IDENTIFICATION
      ========================================================= */
 
   function getDeviceId() {
-    let id = localStorage.getItem("proofline_device_id");
+    let deviceId = localStorage.getItem("proofline_device_id");
 
-    if (!id) {
-      if (window.crypto && crypto.randomUUID) {
-        id = crypto.randomUUID();
+    if (!deviceId) {
+      if (
+        window.crypto &&
+        typeof window.crypto.randomUUID === "function"
+      ) {
+        deviceId = window.crypto.randomUUID();
       } else {
-        id =
+        deviceId =
           "PF-" +
           Date.now().toString(36) +
           "-" +
-          Math.random().toString(36).substring(2, 12);
+          Math.random().toString(36).slice(2, 14);
       }
 
-      localStorage.setItem("proofline_device_id", id);
+      localStorage.setItem("proofline_device_id", deviceId);
     }
 
-    return id;
+    return deviceId;
   }
 
   function getDeviceType() {
-    const ua = navigator.userAgent || "";
-
-    const mobile =
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(
-        ua
-      );
+    const userAgent = navigator.userAgent || "";
 
     if (
-      /iPad/i.test(ua) ||
-      (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1)
+      /iPad/i.test(userAgent) ||
+      (
+        /Macintosh/i.test(userAgent) &&
+        navigator.maxTouchPoints > 1
+      ) ||
+      (
+        /Android/i.test(userAgent) &&
+        !/Mobile/i.test(userAgent)
+      )
     ) {
       return "TABLET";
     }
 
-    if (/Android/i.test(ua) && !/Mobile/i.test(ua)) {
-      return "TABLET";
-    }
-
-    if (mobile) {
+    if (
+      /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(
+        userAgent
+      )
+    ) {
       return "CELLPHONE";
     }
 
@@ -110,86 +129,37 @@ function isTestingMode() {
   }
 
   function getDeviceLabel() {
-    const type = getDeviceType();
-    const platform = navigator.platform || "Unknown platform";
+    const platform =
+      navigator.userAgentData?.platform ||
+      navigator.platform ||
+      "Unknown platform";
 
-    return type + " / " + platform;
+    return `${getDeviceType()} / ${platform}`;
   }
 
   /* =========================================================
-     LOCAL LICENSE STATE
+     LICENSE MANAGEMENT
      ========================================================= */
 
-  function isLicensed() {
+  function isLocallyLicensed() {
     if (isTestingMode()) {
       return true;
     }
 
-    const status = localStorage.getItem("proofline_license_status");
-    const savedDevice = localStorage.getItem("proofline_license_device");
+    const status =
+      localStorage.getItem("proofline_license_status");
+
+    const savedDevice =
+      localStorage.getItem("proofline_license_device");
 
     return (
       status === "activated" &&
-      savedDevice &&
+      Boolean(savedDevice) &&
       savedDevice === getDeviceId()
     );
   }
 
-  /* =========================================================
-     LICENSE MESSAGE
-     ========================================================= */
-
-  function setLicenseMessage(message, type) {
-    if (!el.licenseMessage) return;
-
-    el.licenseMessage.textContent = message || "";
-
-    el.licenseMessage.className = "";
-
-    if (type) {
-      el.licenseMessage.classList.add(type);
-    }
-  }
-
-  /* =========================================================
-     LICENSE ACTIVATION
-     ========================================================= */
-
-async function activateLicense() {
-
-  const input = el.licenseCode;
-
-  if (!input) {
-    console.error("Proofline: licenseCode element not found.");
-    return;
-  }
-
-  const code = (input.value || "")
-    .replace(/\D/g, "")
-    .slice(0, 7);
-
-  input.value = code;
-
-  if (!/^\d{7}$/.test(code)) {
-    setLicenseMessage(
-      "Enter exactly 7 digits.",
-      "error"
-    );
-    return;
-  }
-
-  /*
-    TESTING MODE
-
-    config.js currently contains:
-
-    requireOnlineActivation: false
-
-    Therefore, accept the 7-digit code locally.
-  */
-
-  if (isTestingMode()) {
-
+  function saveLicenseLocally(code) {
     localStorage.setItem(
       "proofline_license_status",
       "activated"
@@ -204,280 +174,168 @@ async function activateLicense() {
       "proofline_license_device",
       getDeviceId()
     );
-
-    state.licensed = true;
-
-    setLicenseMessage("");
-
-    if (el.licenseView) {
-      el.licenseView.classList.add("hidden");
-    }
-
-    if (el.workspaceView) {
-      el.workspaceView.classList.add("hidden");
-    }
-
-    if (el.homeView) {
-      el.homeView.classList.remove("hidden");
-    }
-
-    showHome();
-
-    showToast(
-      "Proofline activated successfully."
-    );
-
-    return;
   }
 
-  const cfg = getConfig();
+  function setLicenseMessage(message = "", type = "") {
+    if (!elements.licenseMessage) {
+      return;
+    }
 
-  if (!cfg.apiUrl) {
+    elements.licenseMessage.textContent = message;
+    elements.licenseMessage.className = "license-message";
+
+    if (type) {
+      elements.licenseMessage.classList.add(type);
+    }
+  }
+
+  function cleanLicenseCode(value) {
+    return String(value || "")
+      .replace(/\D/g, "")
+      .slice(0, 7);
+  }
+
+  async function activateLicense() {
+    if (!elements.licenseCode) {
+      console.error(
+        "Proofline: #licenseCode was not found."
+      );
+      return;
+    }
+
+    const code = cleanLicenseCode(
+      elements.licenseCode.value
+    );
+
+    elements.licenseCode.value = code;
+
+    if (!/^\d{7}$/.test(code)) {
+      setLicenseMessage(
+        "Enter exactly 7 digits.",
+        "error"
+      );
+
+      elements.licenseCode.focus();
+      return;
+    }
+
+    /*
+      Local testing mode.
+
+      This accepts any seven-digit code and does not provide
+      secure one-code-per-device enforcement.
+    */
+    if (isTestingMode()) {
+      saveLicenseLocally(code);
+      state.licensed = true;
+
+      setLicenseMessage("");
+      showHome();
+
+      showToast(
+        "Proofline activated in testing mode."
+      );
+
+      return;
+    }
+
+    const config = getConfig();
+
+    if (!config.apiUrl) {
+      setLicenseMessage(
+        "The online license service is not configured.",
+        "error"
+      );
+      return;
+    }
+
+    if (elements.activateBtn) {
+      elements.activateBtn.disabled = true;
+    }
+
     setLicenseMessage(
-      "License service is not configured yet.",
-      "error"
+      "Checking your license online...",
+      "busy"
     );
-    return;
-  }
 
-  const btn = el.activateBtn;
+    try {
+      const apiUrl =
+        config.apiUrl.replace(/\/+$/, "") +
+        "/activate";
 
-  if (btn) {
-    btn.disabled = true;
-  }
-
-  setLicenseMessage(
-    "Checking your license online…",
-    "busy"
-  );
-
-  try {
-
-    const response = await fetch(
-      cfg.apiUrl.replace(/\/$/, "") + "/activate",
-      {
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          code: code,
+          code,
           deviceId: getDeviceId(),
           deviceType: getDeviceType(),
           deviceLabel: getDeviceLabel(),
           product:
-            cfg.product || "PROOFLINE-GRAMMAR-49"
+            config.product ||
+            "PROOFLINE-GRAMMAR-49"
         })
-      }
-    );
+      });
 
-    const data =
-      await response.json().catch(() => ({}));
+      const data = await response
+        .json()
+        .catch(() => ({}));
 
-    if (!response.ok || !data.ok) {
-      throw new Error(
-        data.message ||
-        "Activation was not accepted."
-      );
-    }
-
-    localStorage.setItem(
-      "proofline_license_status",
-      "activated"
-    );
-
-    localStorage.setItem(
-      "proofline_license_code",
-      code
-    );
-
-    localStorage.setItem(
-      "proofline_license_device",
-      getDeviceId()
-    );
-
-    state.licensed = true;
-
-    if (el.licenseView) {
-      el.licenseView.classList.add("hidden");
-    }
-
-    setLicenseMessage("");
-
-    showHome();
-
-    showToast(
-      "Proofline activated successfully."
-    );
-
-  } catch (error) {
-
-    console.error(
-      "Proofline activation error:",
-      error
-    );
-
-    setLicenseMessage(
-      error.message ||
-      "Could not contact the license service. Make sure you are online.",
-      "error"
-    );
-
-  } finally {
-
-    if (btn) {
-      btn.disabled = false;
-    }
-
-  }
-}
-
-    setLicenseMessage(
-      "Checking your license online…",
-      "busy"
-    );
-
-    try {
-      const response = await fetch(
-        cfg.apiUrl.replace(/\/$/, "") + "/activate",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            code: code,
-            deviceId: getDeviceId(),
-            deviceType: getDeviceType(),
-            deviceLabel: getDeviceLabel(),
-            product:
-              cfg.product || "PROOFLINE-GRAMMAR-49"
-          })
-        }
-      );
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok || !data.ok) {
+      if (!response.ok || data.ok !== true) {
         throw new Error(
-          data.message || "Activation was not accepted."
+          data.message ||
+          `Activation failed with status ${response.status}.`
         );
       }
 
-      localStorage.setItem(
-        "proofline_license_status",
-        "activated"
-      );
-
-      localStorage.setItem(
-        "proofline_license_code",
-        code
-      );
-
-      localStorage.setItem(
-        "proofline_license_device",
-        getDeviceId()
-      );
-
+      saveLicenseLocally(code);
       state.licensed = true;
 
-      if (el.licenseView) {
-        el.licenseView.classList.add("hidden");
-      }
-
       setLicenseMessage("");
-
       showHome();
 
+      showToast(
+        "Proofline activated successfully."
+      );
     } catch (error) {
+      console.error(
+        "Proofline activation error:",
+        error
+      );
+
+      const offline =
+        !navigator.onLine
+          ? " Your device appears to be offline."
+          : "";
+
       setLicenseMessage(
-        error.message ||
-          "Could not contact the license service. Make sure you are online.",
+        (error.message ||
+          "Could not contact the license service.") +
+          offline,
         "error"
       );
     } finally {
-      if (btn) {
-        btn.disabled = false;
+      if (elements.activateBtn) {
+        elements.activateBtn.disabled = false;
       }
     }
   }
 
-  /* =========================================================
-     LICENSE GATE
-     ========================================================= */
-
   function initLicenseGate() {
     state.deviceId = getDeviceId();
-
-    /*
-      IMPORTANT FIX:
-
-      Testing mode completely bypasses the license gate.
-    */
-
-    if (isTestingMode()) {
-      state.licensed = true;
-
-      if (el.licenseView) {
-        el.licenseView.classList.add("hidden");
-      }
-
-      if (el.homeView) {
-        el.homeView.classList.remove("hidden");
-      }
-
-      if (el.workspaceView) {
-        el.workspaceView.classList.add("hidden");
-      }
-
-      showHome();
-
-      return;
-    }
-
-    state.licensed = isLicensed();
+    state.licensed = isLocallyLicensed();
 
     if (state.licensed) {
-      if (el.licenseView) {
-        el.licenseView.classList.add("hidden");
-      }
-
       showHome();
-
       return;
     }
 
-    if (el.licenseView) {
-      el.licenseView.classList.remove("hidden");
-    }
+    showLicense();
 
-    if (el.homeView) {
-      el.homeView.classList.add("hidden");
-    }
-
-    if (el.workspaceView) {
-      el.workspaceView.classList.add("hidden");
-    }
-
-    if (el.activateBtn) {
-      el.activateBtn.onclick = activateLicense;
-    }
-
-    if (el.licenseCode) {
-      el.licenseCode.addEventListener("input", function (event) {
-        event.target.value = event.target.value
-          .replace(/\D/g, "")
-          .slice(0, 7);
-      });
-
-      el.licenseCode.addEventListener(
-        "keydown",
-        function (event) {
-          if (event.key === "Enter") {
-            activateLicense();
-          }
-        }
-      );
+    if (elements.licenseCode) {
+      elements.licenseCode.focus();
     }
   }
 
@@ -485,45 +343,49 @@ async function activateLicense() {
      VIEW MANAGEMENT
      ========================================================= */
 
+  function hideAllMainViews() {
+    elements.licenseView?.classList.add("hidden");
+    elements.homeView?.classList.add("hidden");
+    elements.workspaceView?.classList.add("hidden");
+  }
+
+  function showLicense() {
+    hideAllMainViews();
+    elements.licenseView?.classList.remove("hidden");
+  }
+
   function showHome() {
-    if (!state.licensed) return;
-
-    if (el.licenseView) {
-      el.licenseView.classList.add("hidden");
+    if (!state.licensed) {
+      showLicense();
+      return;
     }
 
-    if (el.workspaceView) {
-      el.workspaceView.classList.add("hidden");
-    }
-
-    if (el.homeView) {
-      el.homeView.classList.remove("hidden");
-    }
+    hideAllMainViews();
+    elements.homeView?.classList.remove("hidden");
   }
 
   function showWorkspace() {
-    if (!state.licensed) return;
-
-    if (el.licenseView) {
-      el.licenseView.classList.add("hidden");
+    if (!state.licensed) {
+      showLicense();
+      return;
     }
 
-    if (el.homeView) {
-      el.homeView.classList.add("hidden");
-    }
+    hideAllMainViews();
+    elements.workspaceView?.classList.remove("hidden");
 
-    if (el.workspaceView) {
-      el.workspaceView.classList.remove("hidden");
-    }
+    requestAnimationFrame(() => {
+      synchronizeEditorScroll();
+      render();
+    });
   }
 
   /* =========================================================
-     ELEMENT HELPERS
+     EDITOR HELPERS
      ========================================================= */
 
   function getEditor() {
     return (
-      $("editor") ||
+      elements.editor ||
       $("textEditor") ||
       $("documentEditor") ||
       $("inputText") ||
@@ -534,9 +396,11 @@ async function activateLicense() {
   function getEditorValue() {
     const editor = getEditor();
 
-    if (!editor) return "";
+    if (!editor) {
+      return "";
+    }
 
-    return editor.value !== undefined
+    return typeof editor.value === "string"
       ? editor.value
       : editor.textContent || "";
   }
@@ -544,51 +408,60 @@ async function activateLicense() {
   function setEditorValue(value) {
     const editor = getEditor();
 
-    if (!editor) return;
+    if (!editor) {
+      return;
+    }
 
-    if (editor.value !== undefined) {
+    if (typeof editor.value === "string") {
       editor.value = value;
     } else {
       editor.textContent = value;
     }
   }
 
-  /* =========================================================
-     DOCUMENT MANAGEMENT
-     ========================================================= */
+  function focusEditor() {
+    const editor = getEditor();
+
+    if (!editor) {
+      return;
+    }
+
+    editor.focus();
+
+    if (
+      typeof editor.setSelectionRange === "function"
+    ) {
+      const length = getEditorValue().length;
+      editor.setSelectionRange(length, length);
+    }
+
+    updateCursorPosition();
+  }
 
   function updateDocumentTitle() {
-    const title =
-      $("documentTitle") ||
-      $("fileName") ||
-      $("docTitle");
-
-    if (title) {
-      title.textContent =
-        state.fileName || "Untitled Document";
+    if (elements.docTitleBtn) {
+      elements.docTitleBtn.textContent =
+        state.fileName || "Untitled document";
     }
+
+    document.title =
+      `${state.fileName || "Untitled document"} - Proofline`;
   }
 
   function createDocument() {
+    clearTimeout(state.analysisTimer);
+
     state.text = "";
     state.analysis = null;
-    state.fileName = "Untitled Document";
+    state.fileName = "Untitled document";
+    state.enhancedText = "";
 
     setEditorValue("");
-
     updateDocumentTitle();
-
+    showWorkspace();
     render();
 
-    showWorkspace();
-
-    const editor = getEditor();
-
-    if (editor) {
-      setTimeout(function () {
-        editor.focus();
-      }, 100);
-    }
+    setTimeout(focusEditor, 100);
   }
 
   /* =========================================================
@@ -604,50 +477,60 @@ async function activateLicense() {
     );
   }
 
-  function runAnalysis() {
-    if (!state.licensed) return;
+  async function runAnalysis() {
+    if (!state.licensed) {
+      return;
+    }
 
     const text = getEditorValue();
-
     state.text = text;
 
     if (!text.trim()) {
       state.analysis = null;
+      state.isAnalyzing = false;
       render();
       return;
     }
 
     state.isAnalyzing = true;
-
-    render();
+    renderAnalyzingState();
 
     try {
+      let result;
+
       if (
         window.GrammarEngine &&
         typeof window.GrammarEngine.analyze ===
           "function"
       ) {
-        state.analysis =
-          window.GrammarEngine.analyze(text);
+        result = window.GrammarEngine.analyze(text);
       } else if (
         window.GrammarChecker &&
         typeof window.GrammarChecker.analyze ===
           "function"
       ) {
-        state.analysis =
-          window.GrammarChecker.analyze(text);
+        result = window.GrammarChecker.analyze(text);
       } else if (
         typeof window.analyze === "function"
       ) {
-        state.analysis = window.analyze(text);
+        result = window.analyze(text);
       } else {
-        state.analysis = {
+        console.warn(
+          "Proofline: No grammar engine was found."
+        );
+
+        result = {
           suggestions: [],
           score: 100,
           errors: 0,
           warnings: 0
         };
       }
+
+      state.analysis =
+        result instanceof Promise
+          ? await result
+          : result;
     } catch (error) {
       console.error(
         "Proofline analysis error:",
@@ -660,11 +543,14 @@ async function activateLicense() {
         errors: 0,
         warnings: 0
       };
+
+      showToast(
+        "The grammar engine could not analyze the text."
+      );
+    } finally {
+      state.isAnalyzing = false;
+      render();
     }
-
-    state.isAnalyzing = false;
-
-    render();
   }
 
   /* =========================================================
@@ -672,102 +558,124 @@ async function activateLicense() {
      ========================================================= */
 
   function getSuggestions() {
-    if (!state.analysis) return [];
+    if (!state.analysis) {
+      return [];
+    }
 
     if (Array.isArray(state.analysis)) {
       return state.analysis;
     }
 
-    if (
-      Array.isArray(state.analysis.suggestions)
-    ) {
-      return state.analysis.suggestions;
-    }
+    const possibleLists = [
+      state.analysis.suggestions,
+      state.analysis.issues,
+      state.analysis.results,
+      state.analysis.matches
+    ];
 
-    if (
-      Array.isArray(state.analysis.issues)
-    ) {
-      return state.analysis.issues;
-    }
-
-    if (
-      Array.isArray(state.analysis.results)
-    ) {
-      return state.analysis.results;
-    }
-
-    return [];
-  }
-
-  function getSuggestionText(item) {
     return (
-      item.suggestion ||
-      item.replacement ||
-      item.correct ||
-      item.corrected ||
-      item.message ||
-      ""
+      possibleLists.find(Array.isArray) || []
     );
   }
 
-  function getSuggestionMessage(item) {
-    return (
-      item.message ||
-      item.explanation ||
-      item.reason ||
-      item.description ||
-      "Possible improvement"
+  function getSuggestionText(item = {}) {
+    const value =
+      item.suggestion ??
+      item.replacement ??
+      item.correct ??
+      item.corrected ??
+      item.replacements?.[0]?.value ??
+      "";
+
+    return String(value);
+  }
+
+  function getSuggestionMessage(item = {}) {
+    return String(
+      item.message ??
+      item.explanation ??
+      item.reason ??
+      item.description ??
+      "Possible writing improvement"
     );
   }
 
-  function getSuggestionType(item) {
-    return (
-      item.type ||
-      item.category ||
-      item.rule ||
+  function getSuggestionType(item = {}) {
+    return String(
+      item.type ??
+      item.category ??
+      item.rule ??
+      item.kind ??
       "Suggestion"
     );
   }
 
-  function getSuggestionStart(item) {
-    return Number.isFinite(item.start)
-      ? item.start
-      : Number.isFinite(item.index)
-      ? item.index
+  function getSuggestionStart(item = {}) {
+    const possibleStart =
+      item.start ??
+      item.index ??
+      item.offset;
+
+    const start = Number(possibleStart);
+
+    return Number.isFinite(start)
+      ? start
       : -1;
   }
 
-  function getSuggestionEnd(item) {
-    if (Number.isFinite(item.end)) {
-      return item.end;
+  function getSuggestionEnd(item = {}) {
+    const explicitEnd = Number(item.end);
+
+    if (Number.isFinite(explicitEnd)) {
+      return explicitEnd;
     }
 
     const start = getSuggestionStart(item);
+    const explicitLength = Number(item.length);
 
-    if (start >= 0) {
-      const original =
-        item.original ||
-        item.text ||
-        item.word ||
-        "";
-
-      return start + original.length;
+    if (
+      start >= 0 &&
+      Number.isFinite(explicitLength)
+    ) {
+      return start + explicitLength;
     }
 
-    return -1;
+    const original = String(
+      item.original ??
+      item.text ??
+      item.word ??
+      item.context?.text ??
+      ""
+    );
+
+    return start >= 0
+      ? start + original.length
+      : -1;
   }
 
-  /* =========================================================
-     ALTERNATIVES
-     ========================================================= */
-
-  function getAlternatives(item) {
-    if (!item) return [];
-
+  function getAlternatives(item = {}) {
     if (Array.isArray(item.alternatives)) {
-      return item.alternatives
-        .filter(Boolean)
-        .slice(0, 5);
+      return [
+        ...new Set(
+          item.alternatives
+            .map(String)
+            .filter(Boolean)
+        )
+      ].slice(0, 5);
+    }
+
+    if (Array.isArray(item.replacements)) {
+      return [
+        ...new Set(
+          item.replacements
+            .map((replacement) =>
+              typeof replacement === "string"
+                ? replacement
+                : replacement?.value
+            )
+            .filter(Boolean)
+        )
+      ].slice(0, 5);
     }
 
     if (
@@ -775,22 +683,80 @@ async function activateLicense() {
       typeof window.EnhancerEngine
         .alternativesFor === "function"
     ) {
-      const original =
-        item.original ||
-        item.text ||
-        item.word ||
-        "";
+      const original = String(
+        item.original ??
+        item.text ??
+        item.word ??
+        ""
+      );
 
       if (original) {
         try {
-          return window.EnhancerEngine
-            .alternativesFor(original)
-            .slice(0, 5);
-        } catch (e) {}
+          const alternatives =
+            window.EnhancerEngine
+              .alternativesFor(original);
+
+          return Array.isArray(alternatives)
+            ? alternatives.slice(0, 5)
+            : [];
+        } catch (error) {
+          console.warn(
+            "Unable to obtain alternatives:",
+            error
+          );
+        }
       }
     }
 
     return [];
+  }
+
+  function normalizeCategory(item) {
+    const type = getSuggestionType(item)
+      .toLowerCase();
+
+    if (type.includes("spell")) {
+      return "Spelling";
+    }
+
+    if (
+      type.includes("punct") ||
+      type.includes("comma")
+    ) {
+      return "Punctuation";
+    }
+
+    if (
+      type.includes("vocab") ||
+      type.includes("word")
+    ) {
+      return "Vocabulary";
+    }
+
+    if (
+      type.includes("style") ||
+      type.includes("clarity") ||
+      type.includes("sentence") ||
+      type.includes("paragraph")
+    ) {
+      return "Style";
+    }
+
+    return "Grammar";
+  }
+
+  function getFilteredSuggestions() {
+    const suggestions = getSuggestions();
+
+    if (state.activeFilter === "All") {
+      return suggestions;
+    }
+
+    return suggestions.filter(
+      (suggestion) =>
+        normalizeCategory(suggestion) ===
+        state.activeFilter
+    );
   }
 
   /* =========================================================
@@ -799,26 +765,36 @@ async function activateLicense() {
 
   function render() {
     renderScore();
+    renderMetrics();
+    renderCounts();
     renderSuggestions();
-    renderStats();
     renderBackdrop();
+    renderStatusBar();
+    renderAnalyzingState();
+  }
+
+  function renderAnalyzingState() {
+    if (!elements.analyzingBadge) {
+      return;
+    }
+
+    elements.analyzingBadge.classList.toggle(
+      "hidden",
+      !state.isAnalyzing
+    );
   }
 
   function renderScore() {
-    const scoreElement =
-      $("score") ||
-      $("grammarScore") ||
-      $("scoreValue");
+    if (!elements.scoreValue) {
+      return;
+    }
 
-    if (!scoreElement) return;
+    let score = Number(
+      state.analysis?.score ?? 100
+    );
 
-    let score = 100;
-
-    if (
-      state.analysis &&
-      Number.isFinite(state.analysis.score)
-    ) {
-      score = state.analysis.score;
+    if (!Number.isFinite(score)) {
+      score = 100;
     }
 
     score = Math.max(
@@ -826,132 +802,188 @@ async function activateLicense() {
       Math.min(100, Math.round(score))
     );
 
-    scoreElement.textContent = score;
+    elements.scoreValue.textContent =
+      String(score);
   }
 
-  function renderStats() {
-    if (!state.analysis) return;
+  function renderMetrics() {
+    if (!elements.metrics) {
+      return;
+    }
 
     const suggestions = getSuggestions();
 
-    const errorCount =
-      state.analysis.errors ??
-      state.analysis.errorCount ??
-      suggestions.filter(function (s) {
-        return (
-          getSuggestionType(s)
-            .toLowerCase()
-            .includes("error")
-        );
-      }).length;
+    const errors = Number(
+      state.analysis?.errors ??
+      state.analysis?.errorCount ??
+      suggestions.filter((item) =>
+        getSuggestionType(item)
+          .toLowerCase()
+          .includes("error")
+      ).length
+    );
 
-    const warningCount =
-      state.analysis.warnings ??
-      state.analysis.warningCount ??
-      suggestions.filter(function (s) {
-        return (
-          getSuggestionType(s)
-            .toLowerCase()
-            .includes("warning")
-        );
-      }).length;
+    const warnings = Number(
+      state.analysis?.warnings ??
+      state.analysis?.warningCount ??
+      suggestions.filter((item) =>
+        getSuggestionType(item)
+          .toLowerCase()
+          .includes("warning")
+      ).length
+    );
 
-    const errorsEl =
-      $("errorCount") ||
-      $("errors");
+    elements.metrics.innerHTML = "";
 
-    const warningsEl =
-      $("warningCount") ||
-      $("warnings");
+    const metricData = [
+      {
+        value: Number.isFinite(errors)
+          ? errors
+          : 0,
+        label: "Errors"
+      },
+      {
+        value: Number.isFinite(warnings)
+          ? warnings
+          : 0,
+        label: "Warnings"
+      },
+      {
+        value: suggestions.length,
+        label: "Suggestions"
+      }
+    ];
 
-    const suggestionEl =
-      $("suggestionCount") ||
-      $("suggestionsCount");
+    metricData.forEach((metric) => {
+      const wrapper =
+        document.createElement("div");
 
-    if (errorsEl) {
-      errorsEl.textContent = errorCount;
-    }
+      wrapper.className = "metric";
 
-    if (warningsEl) {
-      warningsEl.textContent = warningCount;
-    }
+      const value =
+        document.createElement("b");
 
-    if (suggestionEl) {
-      suggestionEl.textContent =
-        suggestions.length;
+      value.textContent =
+        String(metric.value);
+
+      const label =
+        document.createElement("span");
+
+      label.textContent = metric.label;
+
+      wrapper.append(value, label);
+      elements.metrics.appendChild(wrapper);
+    });
+  }
+
+  function renderCounts() {
+    const suggestions = getSuggestions();
+
+    const counts = {
+      All: suggestions.length,
+      Grammar: 0,
+      Spelling: 0,
+      Punctuation: 0,
+      Style: 0,
+      Vocabulary: 0
+    };
+
+    suggestions.forEach((suggestion) => {
+      const category =
+        normalizeCategory(suggestion);
+
+      counts[category] =
+        (counts[category] || 0) + 1;
+    });
+
+    const countElements = {
+      All: $("allCount"),
+      Grammar: $("grammarCount"),
+      Spelling: $("spellingCount"),
+      Punctuation: $("punctuationCount"),
+      Style: $("styleCount"),
+      Vocabulary: $("vocabularyCount")
+    };
+
+    Object.entries(countElements).forEach(
+      ([category, element]) => {
+        if (element) {
+          element.textContent =
+            String(counts[category] || 0);
+        }
+      }
+    );
+
+    if (elements.suggestionsCount) {
+      elements.suggestionsCount.textContent =
+        String(getFilteredSuggestions().length);
     }
   }
 
   function renderSuggestions() {
     const container =
-      $("suggestionsList") ||
-      $("suggestions") ||
-      $("resultsList") ||
-      $("issuesList");
+      elements.suggestionsList;
 
-    if (!container) return;
+    if (!container) {
+      return;
+    }
 
     container.innerHTML = "";
 
     if (state.isAnalyzing) {
-      const loading = document.createElement(
-        "div"
-      );
+      const loading =
+        document.createElement("div");
 
-      loading.className = "suggestion-card";
+      loading.className =
+        "suggestion-card empty";
 
       loading.textContent =
-        "Analyzing your writing…";
+        "Analyzing your writing...";
 
       container.appendChild(loading);
-
       return;
     }
 
-    const suggestions = getSuggestions();
+    const suggestions =
+      getFilteredSuggestions();
 
     if (!suggestions.length) {
-      const empty = document.createElement(
-        "div"
-      );
+      const empty =
+        document.createElement("div");
 
-      empty.className = "suggestion-card";
+      empty.className =
+        "suggestion-card empty";
 
-      empty.textContent = state.text.trim()
-        ? "No suggestions found."
-        : "Start typing to check your writing.";
+      if (!state.text.trim()) {
+        empty.textContent =
+          "Start typing to check your writing.";
+      } else if (state.activeFilter !== "All") {
+        empty.textContent =
+          `No ${state.activeFilter.toLowerCase()} suggestions found.`;
+      } else {
+        empty.textContent =
+          "No suggestions found.";
+      }
 
       container.appendChild(empty);
-
       return;
     }
 
-    suggestions.forEach(function (
-      suggestion,
-      index
-    ) {
-      const card = document.createElement(
-        "div"
-      );
+    suggestions.forEach((suggestion) => {
+      const card =
+        document.createElement("article");
 
-      card.className =
-        "suggestion-card";
+      card.className = "suggestion-card";
 
-      card.dataset.index = index;
+      const type =
+        document.createElement("div");
 
-      const type = document.createElement(
-        "div"
-      );
-
-      type.className =
-        "suggestion-type";
-
+      type.className = "suggestion-type";
       type.textContent =
-        getSuggestionType(suggestion);
+        normalizeCategory(suggestion);
 
-      const message = document.createElement(
-        "div"
-      );
+      const message =
+        document.createElement("div");
 
       message.className =
         "suggestion-message";
@@ -959,8 +991,7 @@ async function activateLicense() {
       message.textContent =
         getSuggestionMessage(suggestion);
 
-      card.appendChild(type);
-      card.appendChild(message);
+      card.append(type, message);
 
       const replacement =
         getSuggestionText(suggestion);
@@ -969,19 +1000,16 @@ async function activateLicense() {
         const applyButton =
           document.createElement("button");
 
+        applyButton.type = "button";
         applyButton.className =
           "suggestion-apply";
 
-        applyButton.type = "button";
-
         applyButton.textContent =
-          "Apply: " + replacement;
+          `Apply: ${replacement}`;
 
         applyButton.addEventListener(
           "click",
-          function (event) {
-            event.stopPropagation();
-
+          () => {
             applySuggestion(
               suggestion,
               replacement
@@ -989,41 +1017,36 @@ async function activateLicense() {
           }
         );
 
-        card.appendChild(
-          applyButton
-        );
+        card.appendChild(applyButton);
       }
 
       const alternatives =
-        getAlternatives(suggestion);
+        getAlternatives(suggestion).filter(
+          (alternative) =>
+            alternative !== replacement
+        );
 
       if (alternatives.length) {
-        const altTitle =
+        const title =
           document.createElement("div");
 
-        altTitle.className =
+        title.className =
           "alternatives-title";
 
-        altTitle.textContent =
-          "Word alternatives";
+        title.textContent =
+          "Alternatives";
 
-        card.appendChild(altTitle);
-
-        const altWrap =
+        const wrapper =
           document.createElement("div");
 
-        altWrap.className =
-          "alternatives";
+        wrapper.className = "alternatives";
 
         alternatives.forEach(
-          function (alternative) {
+          (alternative) => {
             const button =
-              document.createElement(
-                "button"
-              );
+              document.createElement("button");
 
             button.type = "button";
-
             button.className =
               "alternative-btn";
 
@@ -1032,9 +1055,7 @@ async function activateLicense() {
 
             button.addEventListener(
               "click",
-              function (event) {
-                event.stopPropagation();
-
+              () => {
                 applySuggestion(
                   suggestion,
                   alternative
@@ -1042,11 +1063,11 @@ async function activateLicense() {
               }
             );
 
-            altWrap.appendChild(button);
+            wrapper.appendChild(button);
           }
         );
 
-        card.appendChild(altWrap);
+        card.append(title, wrapper);
       }
 
       container.appendChild(card);
@@ -1061,10 +1082,6 @@ async function activateLicense() {
     suggestion,
     replacement
   ) {
-    const editor = getEditor();
-
-    if (!editor) return;
-
     let text = getEditorValue();
 
     const start =
@@ -1083,27 +1100,16 @@ async function activateLicense() {
         replacement +
         text.slice(end);
 
-      setEditorValue(text);
-
-      state.text = text;
-
-      scheduleAnalysis();
-
-      showToast("Suggestion applied.");
-
+      finishSuggestionApplication(text);
       return;
     }
 
-    /*
-      Fallback for engines that provide
-      original text but no position.
-    */
-
-    const original =
-      suggestion.original ||
-      suggestion.text ||
-      suggestion.word ||
-      "";
+    const original = String(
+      suggestion.original ??
+      suggestion.text ??
+      suggestion.word ??
+      ""
+    );
 
     if (original) {
       const position =
@@ -1117,14 +1123,7 @@ async function activateLicense() {
             position + original.length
           );
 
-        setEditorValue(text);
-
-        state.text = text;
-
-        scheduleAnalysis();
-
-        showToast("Suggestion applied.");
-
+        finishSuggestionApplication(text);
         return;
       }
     }
@@ -1134,15 +1133,23 @@ async function activateLicense() {
     );
   }
 
+  function finishSuggestionApplication(text) {
+    setEditorValue(text);
+    state.text = text;
+
+    renderStatusBar();
+    scheduleAnalysis();
+    focusEditor();
+
+    showToast("Suggestion applied.");
+  }
+
   /* =========================================================
-     BACKDROP / HIGHLIGHTING
+     BACKDROP AND HIGHLIGHTING
      ========================================================= */
 
   function renderBackdrop() {
-    const backdrop =
-      $("backdrop") ||
-      $("highlightLayer");
-
+    const backdrop = elements.backdrop;
     const editor = getEditor();
 
     if (!backdrop || !editor) {
@@ -1156,38 +1163,36 @@ async function activateLicense() {
       return;
     }
 
-    const suggestions =
-      getSuggestions();
+    const validSuggestions =
+      getSuggestions()
+        .map((item) => ({
+          item,
+          start: getSuggestionStart(item),
+          end: getSuggestionEnd(item)
+        }))
+        .filter(
+          ({ start, end }) =>
+            start >= 0 &&
+            end > start &&
+            end <= text.length
+        )
+        .sort(
+          (first, second) =>
+            first.start - second.start
+        );
 
-    if (!suggestions.length) {
-      backdrop.textContent = escapeHTML(text);
+    if (!validSuggestions.length) {
+      backdrop.textContent = text;
+      synchronizeEditorScroll();
       return;
     }
 
     let output = "";
     let position = 0;
 
-    suggestions
-      .slice()
-      .sort(function (a, b) {
-        return (
-          getSuggestionStart(a) -
-          getSuggestionStart(b)
-        );
-      })
-      .forEach(function (item) {
-        const start =
-          getSuggestionStart(item);
-
-        const end =
-          getSuggestionEnd(item);
-
-        if (
-          start < 0 ||
-          end <= start ||
-          start < position ||
-          end > text.length
-        ) {
+    validSuggestions.forEach(
+      ({ item, start, end }) => {
+        if (start < position) {
           return;
         }
 
@@ -1195,22 +1200,25 @@ async function activateLicense() {
           text.slice(position, start)
         );
 
-        const flagged =
-          text.slice(start, end);
+        const category =
+          normalizeCategory(item)
+            .toLowerCase();
 
         output +=
-          '<mark class="grammar-highlight">' +
-          escapeHTML(flagged) +
+          `<mark class="grammar-highlight ${category}">` +
+          escapeHTML(text.slice(start, end)) +
           "</mark>";
 
         position = end;
-      });
+      }
+    );
 
     output += escapeHTML(
       text.slice(position)
     );
 
     backdrop.innerHTML = output;
+    synchronizeEditorScroll();
   }
 
   function escapeHTML(value) {
@@ -1222,65 +1230,577 @@ async function activateLicense() {
       .replace(/'/g, "&#039;");
   }
 
-  /* =========================================================
-     FOCUS / CURSOR
-     ========================================================= */
-
-  function focusEditor() {
+  function synchronizeEditorScroll() {
     const editor = getEditor();
+    const backdrop = elements.backdrop;
 
-    if (!editor) return;
+    if (!editor || !backdrop) {
+      return;
+    }
 
-    editor.focus();
-
-    try {
-      const length =
-        editor.value.length;
-
-      editor.setSelectionRange(
-        length,
-        length
-      );
-    } catch (e) {}
+    backdrop.scrollTop = editor.scrollTop;
+    backdrop.scrollLeft = editor.scrollLeft;
   }
 
   /* =========================================================
-     COPY
+     STATUS BAR
+     ========================================================= */
+
+  function renderStatusBar() {
+    const text = getEditorValue();
+
+    const words = text.trim()
+      ? text.trim().split(/\s+/).length
+      : 0;
+
+    const characters = text.length;
+
+    const readingSeconds =
+      words === 0
+        ? 0
+        : Math.max(
+            1,
+            Math.ceil((words / 200) * 60)
+          );
+
+    if (elements.wordCount) {
+      elements.wordCount.textContent =
+        `${words} ${words === 1 ? "word" : "words"}`;
+    }
+
+    if (elements.charCount) {
+      elements.charCount.textContent =
+        `${characters} ${
+          characters === 1
+            ? "character"
+            : "characters"
+        }`;
+    }
+
+    if (elements.readingTime) {
+      if (readingSeconds < 60) {
+        elements.readingTime.textContent =
+          `${readingSeconds} sec read`;
+      } else {
+        const minutes =
+          Math.ceil(readingSeconds / 60);
+
+        elements.readingTime.textContent =
+          `${minutes} min read`;
+      }
+    }
+
+    if (elements.readingLevel) {
+      elements.readingLevel.textContent =
+        getReadingLevel(words, text);
+    }
+
+    updateCursorPosition();
+  }
+
+  function getReadingLevel(wordCount, text) {
+    if (!wordCount) {
+      return "—";
+    }
+
+    const sentenceCount = Math.max(
+      1,
+      (text.match(/[.!?]+/g) || []).length
+    );
+
+    const averageSentenceLength =
+      wordCount / sentenceCount;
+
+    if (averageSentenceLength <= 12) {
+      return "Easy";
+    }
+
+    if (averageSentenceLength <= 20) {
+      return "Standard";
+    }
+
+    return "Advanced";
+  }
+
+  function updateCursorPosition() {
+    const editor = getEditor();
+
+    if (
+      !editor ||
+      !elements.cursorPos ||
+      typeof editor.selectionStart !== "number"
+    ) {
+      return;
+    }
+
+    const beforeCursor =
+      editor.value.slice(
+        0,
+        editor.selectionStart
+      );
+
+    const lines =
+      beforeCursor.split("\n");
+
+    const line = lines.length;
+    const column =
+      lines[lines.length - 1].length + 1;
+
+    elements.cursorPos.textContent =
+      `Ln ${line}, Col ${column}`;
+  }
+
+  /* =========================================================
+     COPY AND SAVE
      ========================================================= */
 
   async function copyText() {
     const text = getEditorValue();
 
     if (!text) {
-      showToast("There is no text to copy.");
-
+      showToast(
+        "There is no text to copy."
+      );
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(
-        text
-      );
-
+      await navigator.clipboard.writeText(text);
       showToast("Text copied.");
     } catch (error) {
       const editor = getEditor();
 
-      if (editor) {
-        editor.select();
+      if (!editor) {
+        showToast("Unable to copy the text.");
+        return;
+      }
 
-        try {
-          document.execCommand("copy");
-        } catch (e) {}
+      editor.focus();
+      editor.select();
 
-        editor.setSelectionRange(
-          editor.value.length,
-          editor.value.length
+      const copied =
+        document.execCommand("copy");
+
+      focusEditor();
+
+      showToast(
+        copied
+          ? "Text copied."
+          : "Unable to copy the text."
+      );
+    }
+  }
+
+  function saveAs() {
+    const text = getEditorValue();
+
+    if (!text.trim()) {
+      showToast(
+        "There is no text to save."
+      );
+      return;
+    }
+
+    const baseName =
+      (state.fileName ||
+        "Proofline document")
+        .replace(/\.[^/.]+$/, "")
+        .replace(/[<>:"/\\|?*]/g, "_");
+
+    const blob = new Blob([text], {
+      type: "text/plain;charset=utf-8"
+    });
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const link =
+      document.createElement("a");
+
+    link.href = url;
+    link.download =
+      `${baseName}_Proofline.txt`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 1000);
+
+    showToast("Document saved.");
+  }
+
+  /* =========================================================
+     FILE IMPORT
+     ========================================================= */
+
+  function setFileStatus(message) {
+    if (elements.fileStatus) {
+      elements.fileStatus.textContent =
+        message || "";
+    }
+  }
+
+  function readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        resolve(String(reader.result || ""));
+      };
+
+      reader.onerror = () => {
+        reject(
+          new Error("Unable to read the file.")
+        );
+      };
+
+      reader.readAsText(file);
+    });
+  }
+
+  function readFileAsArrayBuffer(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        resolve(reader.result);
+      };
+
+      reader.onerror = () => {
+        reject(
+          new Error("Unable to read the file.")
+        );
+      };
+
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  async function readDocx(file) {
+    if (
+      !window.mammoth ||
+      typeof window.mammoth.extractRawText !==
+        "function"
+    ) {
+      throw new Error(
+        "The DOCX reader library is unavailable."
+      );
+    }
+
+    const arrayBuffer =
+      await readFileAsArrayBuffer(file);
+
+    const result =
+      await window.mammoth.extractRawText({
+        arrayBuffer
+      });
+
+    return result.value || "";
+  }
+
+  async function readPdf(file) {
+    const pdfLibrary =
+      window.pdfjsLib ||
+      window["pdfjs-dist/build/pdf"];
+
+    if (!pdfLibrary) {
+      throw new Error(
+        "The PDF reader library is unavailable."
+      );
+    }
+
+    const arrayBuffer =
+      await readFileAsArrayBuffer(file);
+
+    const loadingTask =
+      pdfLibrary.getDocument({
+        data: new Uint8Array(arrayBuffer)
+      });
+
+    const pdf = await loadingTask.promise;
+    const pages = [];
+
+    for (
+      let pageNumber = 1;
+      pageNumber <= pdf.numPages;
+      pageNumber += 1
+    ) {
+      const page =
+        await pdf.getPage(pageNumber);
+
+      const content =
+        await page.getTextContent();
+
+      const pageText = content.items
+        .map((item) => item.str || "")
+        .join(" ");
+
+      pages.push(pageText);
+    }
+
+    return pages.join("\n\n");
+  }
+
+  async function extractFileText(file) {
+    const fileName =
+      file.name.toLowerCase();
+
+    if (fileName.endsWith(".docx")) {
+      return readDocx(file);
+    }
+
+    if (fileName.endsWith(".pdf")) {
+      return readPdf(file);
+    }
+
+    return readFileAsText(file);
+  }
+
+  async function importFiles(files) {
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    const file = files[0];
+
+    setFileStatus(
+      `Opening ${file.name}...`
+    );
+
+    try {
+      const text =
+        await extractFileText(file);
+
+      if (!text.trim()) {
+        throw new Error(
+          "No readable text was found in the file."
         );
       }
 
-      showToast("Text copied.");
+      state.fileName =
+        file.name || "Imported document";
+
+      state.text = text;
+      state.analysis = null;
+
+      setEditorValue(text);
+      updateDocumentTitle();
+      showWorkspace();
+      closeModal("documentsModal");
+
+      renderStatusBar();
+      scheduleAnalysis();
+
+      setFileStatus(
+        `${file.name} opened successfully.`
+      );
+
+      showToast(
+        "Document imported successfully."
+      );
+    } catch (error) {
+      console.error(
+        "Proofline file import error:",
+        error
+      );
+
+      setFileStatus(
+        error.message ||
+        "Unable to import the document."
+      );
+
+      showToast(
+        "Unable to import the document."
+      );
     }
+  }
+
+  /* =========================================================
+     ENHANCER
+     ========================================================= */
+
+  async function openEnhancer() {
+    const text = getEditorValue();
+
+    if (!text.trim()) {
+      showToast("Enter some text first.");
+      return;
+    }
+
+    const originalElement =
+      $("enhanceOriginal");
+
+    const resultElement =
+      $("enhanceResult");
+
+    const changesElement =
+      $("enhanceChanges");
+
+    if (originalElement) {
+      originalElement.textContent = text;
+    }
+
+    if (resultElement) {
+      resultElement.textContent =
+        "Preparing enhancement...";
+    }
+
+    if (changesElement) {
+      changesElement.innerHTML = "";
+    }
+
+    openModal("enhancerModal");
+
+    const mode =
+      $("enhancerMode")?.value ||
+      "standard";
+
+    try {
+      if (
+        !window.EnhancerEngine ||
+        typeof window.EnhancerEngine.enhance !==
+          "function"
+      ) {
+        throw new Error(
+          "The enhancer engine is unavailable."
+        );
+      }
+
+      let result =
+        window.EnhancerEngine.enhance(
+          text,
+          mode
+        );
+
+      if (result instanceof Promise) {
+        result = await result;
+      }
+
+      const enhancedText =
+        typeof result === "string"
+          ? result
+          : result?.text ??
+            result?.enhanced ??
+            result?.result ??
+            "";
+
+      if (!enhancedText.trim()) {
+        throw new Error(
+          "No enhanced text was produced."
+        );
+      }
+
+      state.enhancedText = enhancedText;
+
+      if (resultElement) {
+        resultElement.textContent =
+          enhancedText;
+      }
+
+      renderEnhancementChanges(
+        text,
+        enhancedText
+      );
+    } catch (error) {
+      console.error(
+        "Proofline enhancer error:",
+        error
+      );
+
+      state.enhancedText = "";
+
+      if (resultElement) {
+        resultElement.textContent =
+          error.message ||
+          "Unable to enhance the text.";
+      }
+    }
+  }
+
+  function renderEnhancementChanges(
+    original,
+    enhanced
+  ) {
+    const container =
+      $("enhanceChanges");
+
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML = "";
+
+    if (original === enhanced) {
+      const noChanges =
+        document.createElement("div");
+
+      noChanges.className = "change";
+      noChanges.textContent =
+        "No changes were suggested.";
+
+      container.appendChild(noChanges);
+      return;
+    }
+
+    const change =
+      document.createElement("div");
+
+    change.className = "change";
+
+    const removed =
+      document.createElement("del");
+
+    removed.textContent = original;
+
+    const separator =
+      document.createTextNode(" → ");
+
+    const inserted =
+      document.createElement("ins");
+
+    inserted.textContent = enhanced;
+
+    change.append(
+      removed,
+      separator,
+      inserted
+    );
+
+    container.appendChild(change);
+  }
+
+  function applyEnhancement() {
+    if (!state.enhancedText.trim()) {
+      showToast(
+        "There is no enhancement to apply."
+      );
+      return;
+    }
+
+    setEditorValue(state.enhancedText);
+    state.text = state.enhancedText;
+
+    closeModal("enhancerModal");
+    renderStatusBar();
+    scheduleAnalysis();
+    focusEditor();
+
+    showToast("Enhancement applied.");
+  }
+
+  /* =========================================================
+     MODALS
+     ========================================================= */
+
+  function openModal(id) {
+    $(id)?.classList.remove("hidden");
+  }
+
+  function closeModal(id) {
+    $(id)?.classList.add("hidden");
   }
 
   /* =========================================================
@@ -1291,219 +1811,32 @@ async function activateLicense() {
     let toast = $("toast");
 
     if (!toast) {
-      toast = document.createElement(
-        "div"
-      );
-
+      toast = document.createElement("div");
       toast.id = "toast";
+      toast.setAttribute(
+        "role",
+        "status"
+      );
 
       document.body.appendChild(toast);
     }
 
     toast.textContent = message;
-
     toast.classList.add("show");
 
-    clearTimeout(
-      showToast.timer
-    );
+    clearTimeout(showToast.timer);
 
-    showToast.timer =
-      setTimeout(function () {
-        toast.classList.remove("show");
-      }, 2200);
+    showToast.timer = setTimeout(() => {
+      toast.classList.remove("show");
+    }, 2200);
   }
 
   /* =========================================================
-     FILE READING
+     EVENT HELPERS
      ========================================================= */
 
-  function readFile(file) {
-    return new Promise(function (
-      resolve,
-      reject
-    ) {
-      const reader =
-        new FileReader();
-
-      reader.onload = function () {
-        resolve(
-          reader.result || ""
-        );
-      };
-
-      reader.onerror = function () {
-        reject(
-          new Error(
-            "Unable to read file."
-          )
-        );
-      };
-
-      reader.readAsText(file);
-    });
-  }
-
-  /* =========================================================
-     IMPORT FILES
-     ========================================================= */
-
-  async function importFiles(files) {
-    if (!files || !files.length) {
-      return;
-    }
-
-    const file = files[0];
-
-    try {
-      const text =
-        await readFile(file);
-
-      state.fileName =
-        file.name ||
-        "Imported Document";
-
-      setEditorValue(text);
-
-      state.text = text;
-
-      showWorkspace();
-
-      updateDocumentTitle();
-
-      scheduleAnalysis();
-
-      showToast(
-        "Document imported successfully."
-      );
-    } catch (error) {
-      console.error(error);
-
-      showToast(
-        "Unable to import the document."
-      );
-    }
-  }
-
-  /* =========================================================
-     SAVE AS
-     ========================================================= */
-
-  function saveAs() {
-    const text = getEditorValue();
-
-    if (!text.trim()) {
-      showToast(
-        "There is no text to save."
-      );
-
-      return;
-    }
-
-    const blob =
-      new Blob([text], {
-        type: "text/plain;charset=utf-8"
-      });
-
-    const url =
-      URL.createObjectURL(blob);
-
-    const link =
-      document.createElement("a");
-
-    link.href = url;
-
-    const baseName =
-      (state.fileName ||
-        "Proofline Document")
-        .replace(
-          /\.[^/.]+$/,
-          ""
-        );
-
-    link.download =
-      baseName +
-      "_Proofline.txt";
-
-    document.body.appendChild(link);
-
-    link.click();
-
-    link.remove();
-
-    URL.revokeObjectURL(url);
-
-    showToast("Document saved.");
-  }
-
-  /* =========================================================
-     ENHANCE
-     ========================================================= */
-
-  function enhance() {
-    const text = getEditorValue();
-
-    if (!text.trim()) {
-      showToast(
-        "Enter some text first."
-      );
-
-      return;
-    }
-
-    try {
-      if (
-        window.EnhancerEngine &&
-        typeof window.EnhancerEngine
-          .enhance === "function"
-      ) {
-        const result =
-          window.EnhancerEngine.enhance(
-            text
-          );
-
-        if (
-          typeof result === "string" &&
-          result.trim()
-        ) {
-          setEditorValue(result);
-
-          state.text = result;
-
-          scheduleAnalysis();
-
-          showToast(
-            "Writing enhanced."
-          );
-
-          return;
-        }
-      }
-
-      showToast(
-        "Enhancer is not available."
-      );
-    } catch (error) {
-      console.error(
-        "Enhancer error:",
-        error
-      );
-
-      showToast(
-        "Unable to enhance the text."
-      );
-    }
-  }
-
-  /* =========================================================
-     EVENT BINDING
-     ========================================================= */
-
-  function bindButton(
-    ids,
-    handler
-  ) {
-    ids.forEach(function (id) {
+  function bindButton(ids, handler) {
+    ids.forEach((id) => {
       const button = $(id);
 
       if (button) {
@@ -1515,42 +1848,82 @@ async function activateLicense() {
     });
   }
 
+  /* =========================================================
+     EVENT BINDING
+     ========================================================= */
+
   function initEvents() {
     const editor = getEditor();
+
+    if (elements.activateBtn) {
+      elements.activateBtn.addEventListener(
+        "click",
+        activateLicense
+      );
+    }
+
+    if (elements.licenseCode) {
+      elements.licenseCode.addEventListener(
+        "input",
+        (event) => {
+          event.target.value =
+            cleanLicenseCode(
+              event.target.value
+            );
+
+          setLicenseMessage("");
+        }
+      );
+
+      elements.licenseCode.addEventListener(
+        "keydown",
+        (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            activateLicense();
+          }
+        }
+      );
+    }
 
     if (editor) {
       editor.addEventListener(
         "input",
-        function () {
-          state.text =
-            getEditorValue();
+        () => {
+          state.text = getEditorValue();
 
+          renderStatusBar();
+          renderBackdrop();
           scheduleAnalysis();
         }
       );
 
       editor.addEventListener(
         "scroll",
-        function () {
-          const backdrop =
-            $("backdrop") ||
-            $("highlightLayer");
+        synchronizeEditorScroll
+      );
 
-          if (backdrop) {
-            backdrop.scrollTop =
-              editor.scrollTop;
+      editor.addEventListener(
+        "click",
+        updateCursorPosition
+      );
 
-            backdrop.scrollLeft =
-              editor.scrollLeft;
-          }
-        }
+      editor.addEventListener(
+        "keyup",
+        updateCursorPosition
+      );
+
+      editor.addEventListener(
+        "select",
+        updateCursorPosition
       );
     }
 
-    /* New document */
-
     bindButton(
       [
+        "getStartedBtn",
+        "blankDocBtn",
+        "newDocBtn",
         "newDocument",
         "newBtn",
         "createDocument",
@@ -1559,71 +1932,56 @@ async function activateLicense() {
       createDocument
     );
 
-    /* Home */
-
     bindButton(
       [
+        "brandHomeBtn",
         "homeBtn",
         "backHome"
       ],
       showHome
     );
 
-    /* Workspace */
-
     bindButton(
       [
-        "writeBtn",
-        "openEditor",
-        "startWritingBtn"
+        "homeUploadBtn",
+        "uploadBtn"
       ],
-      function () {
-        showWorkspace();
-        focusEditor();
+      () => {
+        elements.fileInput?.click();
       }
     );
 
-    /* Copy */
+    bindButton(
+      ["documentsBtn"],
+      () => {
+        openModal("documentsModal");
+      }
+    );
 
     bindButton(
-      [
-        "copyBtn",
-        "copyText"
-      ],
+      ["copyBtn", "copyText"],
       copyText
     );
 
-    /* Save */
-
     bindButton(
-      [
-        "saveBtn",
-        "saveAsBtn"
-      ],
+      ["saveAsBtn", "saveBtn"],
       saveAs
     );
 
-    /* Enhance */
-
     bindButton(
-      [
-        "enhanceBtn",
-        "enhanceText"
-      ],
-      enhance
+      ["enhanceBtn", "enhanceText"],
+      openEnhancer
     );
 
-    /* Upload */
+    bindButton(
+      ["applyEnhanceBtn"],
+      applyEnhancement
+    );
 
-    const fileInput =
-      $("fileInput") ||
-      $("uploadInput") ||
-      $("fileUpload");
-
-    if (fileInput) {
-      fileInput.addEventListener(
+    if (elements.fileInput) {
+      elements.fileInput.addEventListener(
         "change",
-        function (event) {
+        (event) => {
           importFiles(
             event.target.files
           );
@@ -1633,71 +1991,146 @@ async function activateLicense() {
       );
     }
 
-    /* Drag and drop */
+    if (elements.dropZone) {
+      ["dragenter", "dragover"].forEach(
+        (eventName) => {
+          elements.dropZone.addEventListener(
+            eventName,
+            (event) => {
+              event.preventDefault();
 
-    const dropZone =
-      $("dropZone") ||
-      $("uploadArea");
+              elements.dropZone.classList.add(
+                "dragging"
+              );
+            }
+          );
+        }
+      );
 
-    if (dropZone) {
-      [
-        "dragenter",
-        "dragover"
-      ].forEach(function (eventName) {
-        dropZone.addEventListener(
-          eventName,
-          function (event) {
-            event.preventDefault();
+      ["dragleave", "drop"].forEach(
+        (eventName) => {
+          elements.dropZone.addEventListener(
+            eventName,
+            (event) => {
+              event.preventDefault();
 
-            dropZone.classList.add(
-              "dragging"
-            );
-          }
-        );
-      });
+              elements.dropZone.classList.remove(
+                "dragging"
+              );
+            }
+          );
+        }
+      );
 
-      [
-        "dragleave",
-        "drop"
-      ].forEach(function (eventName) {
-        dropZone.addEventListener(
-          eventName,
-          function (event) {
-            event.preventDefault();
-
-            dropZone.classList.remove(
-              "dragging"
-            );
-          }
-        );
-      });
-
-      dropZone.addEventListener(
+      elements.dropZone.addEventListener(
         "drop",
-        function (event) {
-          const files =
-            event.dataTransfer.files;
-
-          importFiles(files);
+        (event) => {
+          importFiles(
+            event.dataTransfer.files
+          );
         }
       );
     }
 
-    /* Escape key */
+    document
+      .querySelectorAll("[data-close]")
+      .forEach((button) => {
+        button.addEventListener(
+          "click",
+          () => {
+            closeModal(
+              button.dataset.close
+            );
+          }
+        );
+      });
+
+    document
+      .querySelectorAll(".modal")
+      .forEach((modal) => {
+        modal.addEventListener(
+          "click",
+          (event) => {
+            if (event.target === modal) {
+              closeModal(modal.id);
+            }
+          }
+        );
+      });
+
+    document
+      .querySelectorAll(
+        ".nav-item[data-filter]"
+      )
+      .forEach((button) => {
+        button.addEventListener(
+          "click",
+          () => {
+            state.activeFilter =
+              button.dataset.filter || "All";
+
+            document
+              .querySelectorAll(
+                ".nav-item[data-filter]"
+              )
+              .forEach((item) => {
+                item.classList.toggle(
+                  "active",
+                  item === button
+                );
+              });
+
+            renderSuggestions();
+            renderCounts();
+          }
+        );
+      });
+
+    $("enhancerMode")?.addEventListener(
+      "change",
+      () => {
+        if (
+          elements.enhancerModal &&
+          !elements.enhancerModal.classList.contains(
+            "hidden"
+          )
+        ) {
+          openEnhancer();
+        }
+      }
+    );
 
     document.addEventListener(
       "keydown",
-      function (event) {
+      (event) => {
+        if (event.key !== "Escape") {
+          return;
+        }
+
+        const visibleModal =
+          document.querySelector(
+            ".modal:not(.hidden)"
+          );
+
+        if (visibleModal) {
+          closeModal(visibleModal.id);
+          return;
+        }
+
         if (
-          event.key === "Escape" &&
-          el.workspaceView &&
-          !el.workspaceView.classList.contains(
+          elements.workspaceView &&
+          !elements.workspaceView.classList.contains(
             "hidden"
           )
         ) {
           showHome();
         }
       }
+    );
+
+    window.addEventListener(
+      "resize",
+      synchronizeEditorScroll
     );
   }
 
@@ -1706,28 +2139,27 @@ async function activateLicense() {
      ========================================================= */
 
   function init() {
-    initLicenseGate();
     initEvents();
+    initLicenseGate();
 
-    /*
-      In testing mode, go directly
-      to the home page.
-    */
+    updateDocumentTitle();
+    render();
 
-    if (isTestingMode()) {
-      state.licensed = true;
-      showHome();
-    }
+    console.info(
+      "Proofline initialized.",
+      {
+        testingMode: isTestingMode(),
+        licensed: state.licensed,
+        deviceType: getDeviceType()
+      }
+    );
   }
 
   /* =========================================================
      START APPLICATION
      ========================================================= */
 
-  if (
-    document.readyState ===
-    "loading"
-  ) {
+  if (document.readyState === "loading") {
     document.addEventListener(
       "DOMContentLoaded",
       init
@@ -1735,5 +2167,4 @@ async function activateLicense() {
   } else {
     init();
   }
-
 })();

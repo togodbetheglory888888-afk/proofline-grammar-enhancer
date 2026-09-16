@@ -1,4 +1,4 @@
-```javascript
+javascript
 (function () {
   "use strict";
 
@@ -1632,4 +1632,3 @@ if (isTestingMode()) {
   }
 
 })();
-```

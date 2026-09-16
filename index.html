@@ -2,24 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  >
-
-  <meta
-    name="description"
-    content="Proofline is a private grammar and writing assistant that performs writing analysis in your browser."
-  >
-
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Proofline is a private grammar and writing assistant that performs writing analysis in your browser.">
   <meta name="theme-color" content="#28786f">
-
   <title>Proofline | Grammar and Writing Assistant</title>
-
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
   <noscript>
     <div class="noscript-message">
@@ -28,52 +16,28 @@
   </noscript>
 
   <div id="app">
-
-    <!-- =====================================================
-         LICENSE VIEW
-         ===================================================== -->
-
-    <section
-      id="licenseView"
-      class="license-view"
-      aria-labelledby="licenseTitle"
-    >
+    <!-- License view -->
+    <section id="licenseView" class="license-view" aria-labelledby="licenseTitle">
       <div class="license-shell">
-
         <header class="landing-nav">
           <div class="landing-brand">
             <span class="brand-symbol" aria-hidden="true">P</span>
             <span>Proofline</span>
           </div>
-
           <div class="landing-status">
             <span class="status-dot" aria-hidden="true"></span>
-            <span>Secure online activation</span>
+            <span>Secure activation</span>
           </div>
         </header>
 
         <main class="license-card">
-          <div class="hero-kicker">
-            LICENSE ACTIVATION
-          </div>
-
-          <h1 id="licenseTitle">
-            Unlock your writing assistant.
-          </h1>
-
+          <div class="hero-kicker">LICENSE ACTIVATION</div>
+          <h1 id="licenseTitle">Unlock your writing assistant.</h1>
           <p class="license-copy">
-            Enter your seven-digit Proofline code to continue.
-            Your code will be registered to this browser and device
-            after successful activation.
+            Enter your seven-digit Proofline code to continue. The activation is remembered in this browser.
           </p>
 
-          <label
-            class="license-label"
-            for="licenseCode"
-          >
-            Seven-digit activation code
-          </label>
-
+          <label class="license-label" for="licenseCode">Seven-digit activation code</label>
           <input
             id="licenseCode"
             class="license-input"
@@ -89,58 +53,31 @@
             aria-describedby="licenseMessage licenseHelp"
           >
 
-          <button
-            id="activateBtn"
-            class="btn primary big license-btn"
-            type="button"
-          >
-            Activate
-            <span aria-hidden="true">→</span>
+          <button id="activateBtn" class="btn primary big license-btn" type="button">
+            Activate <span aria-hidden="true">→</span>
           </button>
 
-          <div
-            id="licenseMessage"
-            class="license-message"
-            role="status"
-            aria-live="polite"
-          ></div>
-
-          <div
-            id="licenseHelp"
-            class="license-help"
-          >
-            Need to use a new computer? Contact the seller for
-            license recovery or transfer assistance.
+          <div id="licenseMessage" class="license-message" role="status" aria-live="polite"></div>
+          <div id="licenseHelp" class="license-help">
+            Need to use a new browser or computer? Contact the seller for license recovery or transfer assistance.
           </div>
         </main>
 
         <footer class="landing-footer">
-          <span>Proofline · Online license verification</span>
+          <span>Proofline · License verification</span>
           <span>Grammar processing remains in your browser</span>
         </footer>
-
       </div>
     </section>
 
-
-    <!-- =====================================================
-         HOME VIEW
-         Hidden until the license check is completed
-         ===================================================== -->
-
-    <section
-      id="homeView"
-      class="home-view hidden"
-      aria-labelledby="homeTitle"
-    >
+    <!-- Home view -->
+    <section id="homeView" class="home-view hidden" aria-labelledby="homeTitle">
       <div class="landing-shell">
-
         <header class="landing-nav">
           <div class="landing-brand">
             <span class="brand-symbol" aria-hidden="true">P</span>
             <span>Proofline</span>
           </div>
-
           <div class="landing-status">
             <span class="status-dot" aria-hidden="true"></span>
             <span>Writing analysis runs on this device</span>
@@ -148,138 +85,61 @@
         </header>
 
         <main class="hero">
-          <div class="hero-kicker">
-            PRIVATE WRITING ASSISTANT
-          </div>
-
-          <h1 id="homeTitle">
-            Write clearly.
-            <br>
-            <em>Stay in control.</em>
-          </h1>
-
+          <div class="hero-kicker">PRIVATE WRITING ASSISTANT</div>
+          <h1 id="homeTitle">Write clearly.<br><em>Stay in control.</em></h1>
           <p class="hero-copy">
-            Check grammar, spelling, punctuation, clarity,
-            vocabulary, and writing quality without sending your
-            documents to a grammar-processing server.
+            Check grammar, spelling, punctuation, clarity, vocabulary, and writing quality using local browser-based rules.
           </p>
 
           <div class="home-actions">
-            <button
-              id="getStartedBtn"
-              class="btn primary big"
-              type="button"
-            >
+            <button id="getStartedBtn" class="btn primary big" type="button">
               <span class="action-icon" aria-hidden="true">✎</span>
               Paste or write text
               <span aria-hidden="true">→</span>
             </button>
-
-            <button
-              id="homeUploadBtn"
-              class="btn secondary big"
-              type="button"
-            >
+            <button id="homeUploadBtn" class="btn secondary big" type="button">
               <span class="action-icon" aria-hidden="true">↥</span>
               Upload a file
             </button>
           </div>
 
           <div class="home-secondary-action">
-            <button
-              id="blankDocBtn"
-              class="text-btn"
-              type="button"
-            >
-              Start with a blank document
-            </button>
+            <button id="blankDocBtn" class="text-btn" type="button">Start with a blank document</button>
           </div>
 
           <div class="privacy-badge">
             <span aria-hidden="true">🔒</span>
-            <span>
-              Private by design · No writing account required ·
-              Local grammar analysis
-            </span>
+            <span>Private by design · Local grammar analysis</span>
           </div>
         </main>
 
-
-        <!-- Feature cards -->
-
-        <section
-          class="feature-strip"
-          aria-label="Proofline features"
-        >
+        <section class="feature-strip" aria-label="Proofline features">
           <article>
-            <div
-              class="feature-icon"
-              aria-hidden="true"
-            >
-              ✓
-            </div>
-
+            <div class="feature-icon" aria-hidden="true">✓</div>
             <div>
               <b>Grammar and spelling</b>
-
-              <span>
-                Review agreement, verb forms, articles, pronouns,
-                spelling, punctuation, and common grammar problems.
-              </span>
+              <span>Review agreement, verb forms, articles, pronouns, spelling, punctuation, and common usage.</span>
             </div>
           </article>
-
           <article>
-            <div
-              class="feature-icon"
-              aria-hidden="true"
-            >
-              ✦
-            </div>
-
+            <div class="feature-icon" aria-hidden="true">✦</div>
             <div>
               <b>Clarity and style</b>
-
-              <span>
-                Find wordy phrases, sentence problems, weak wording,
-                and readability issues.
-              </span>
+              <span>Find wordy phrases, long sentences, weak wording, and readability issues.</span>
             </div>
           </article>
-
           <article>
-            <div
-              class="feature-icon"
-              aria-hidden="true"
-            >
-              Aa
-            </div>
-
+            <div class="feature-icon" aria-hidden="true">Aa</div>
             <div>
               <b>Vocabulary assistance</b>
-
-              <span>
-                Consider clearer words, synonyms, and phrase
-                alternatives using local language rules.
-              </span>
+              <span>Consider clearer words, synonyms, and phrase alternatives using local rules.</span>
             </div>
           </article>
-
           <article>
-            <div
-              class="feature-icon"
-              aria-hidden="true"
-            >
-              ↥
-            </div>
-
+            <div class="feature-icon" aria-hidden="true">↥</div>
             <div>
-              <b>Work with your files</b>
-
-              <span>
-                Open TXT, Markdown, HTML, CSV, DOCX, and
-                text-based PDF files.
-              </span>
+              <b>Work with files</b>
+              <span>Open TXT, Markdown, HTML, CSV, DOCX, and text-based PDF files.</span>
             </div>
           </article>
         </section>
@@ -288,219 +148,51 @@
           <span>Designed for focused writing</span>
           <span>Proofline · Local writing analysis</span>
         </footer>
-
       </div>
     </section>
 
-
-    <!-- =====================================================
-         WRITING WORKSPACE
-         ===================================================== -->
-
-    <section
-      id="workspaceView"
-      class="workspace hidden"
-      aria-label="Proofline writing workspace"
-    >
-
-      <!-- Top toolbar -->
-
+    <!-- Workspace -->
+    <section id="workspaceView" class="workspace hidden" aria-label="Proofline writing workspace">
       <header class="topbar">
         <div class="brand-area">
-          <button
-            id="brandHomeBtn"
-            class="brand-btn"
-            type="button"
-            aria-label="Return to Proofline home"
-          >
-            Proofline
-          </button>
-
-          <span
-            class="divider"
-            aria-hidden="true"
-          ></span>
-
-          <button
-            id="docTitleBtn"
-            class="doc-title-btn"
-            type="button"
-            title="Current document"
-          >
-            Untitled document
-          </button>
+          <button id="brandHomeBtn" class="brand-btn" type="button" aria-label="Return to Proofline home">Proofline</button>
+          <span class="divider" aria-hidden="true"></span>
+          <button id="docTitleBtn" class="doc-title-btn" type="button" title="Current document">Untitled document</button>
         </div>
 
-        <div
-          class="toolbar"
-          role="toolbar"
-          aria-label="Document tools"
-        >
-          <span
-            id="analyzingBadge"
-            class="badge hidden"
-            role="status"
-            aria-live="polite"
-          >
-            Checking...
-          </span>
-
-          <button
-            id="documentsBtn"
-            class="btn ghost"
-            type="button"
-          >
-            Documents
-          </button>
-
-          <button
-            id="enhanceBtn"
-            class="btn ghost"
-            type="button"
-          >
-            Enhance
-          </button>
-
-          <button
-            id="copyBtn"
-            class="btn ghost"
-            type="button"
-          >
-            Copy
-          </button>
-
-          <button
-            id="saveAsBtn"
-            class="btn ghost"
-            type="button"
-          >
-            Save As
-          </button>
+        <div class="toolbar" role="toolbar" aria-label="Document tools">
+          <span id="analyzingBadge" class="badge hidden" role="status" aria-live="polite">Checking...</span>
+          <button id="documentsBtn" class="btn ghost" type="button">Documents</button>
+          <button id="enhanceBtn" class="btn ghost" type="button">Enhance</button>
+          <button id="copyBtn" class="btn ghost" type="button">Copy</button>
+          <button id="saveAsBtn" class="btn ghost" type="button">Save As</button>
         </div>
       </header>
 
-
       <div class="workspace-grid">
-
-        <!-- Left navigation -->
-
-        <aside
-          class="leftbar"
-          aria-label="Suggestion categories"
-        >
-          <button
-            class="nav-item active"
-            type="button"
-            data-filter="All"
-          >
-            <span>Overview</span>
-            <span class="count" id="allCount">0</span>
-          </button>
-
-          <button
-            class="nav-item"
-            type="button"
-            data-filter="Grammar"
-          >
-            <span>Grammar</span>
-            <span class="count" id="grammarCount">0</span>
-          </button>
-
-          <button
-            class="nav-item"
-            type="button"
-            data-filter="Spelling"
-          >
-            <span>Spelling</span>
-            <span class="count" id="spellingCount">0</span>
-          </button>
-
-          <button
-            class="nav-item"
-            type="button"
-            data-filter="Punctuation"
-          >
-            <span>Punctuation</span>
-            <span class="count" id="punctuationCount">0</span>
-          </button>
-
-          <button
-            class="nav-item"
-            type="button"
-            data-filter="Style"
-          >
-            <span>Sentence and paragraph</span>
-            <span class="count" id="styleCount">0</span>
-          </button>
-
-          <button
-            class="nav-item"
-            type="button"
-            data-filter="Vocabulary"
-          >
-            <span>Vocabulary</span>
-            <span class="count" id="vocabularyCount">0</span>
-          </button>
-
+        <aside class="leftbar" aria-label="Suggestion categories">
+          <button class="nav-item active" type="button" data-filter="All"><span>Overview</span><span class="count" id="allCount">0</span></button>
+          <button class="nav-item" type="button" data-filter="Grammar"><span>Grammar</span><span class="count" id="grammarCount">0</span></button>
+          <button class="nav-item" type="button" data-filter="Spelling"><span>Spelling</span><span class="count" id="spellingCount">0</span></button>
+          <button class="nav-item" type="button" data-filter="Punctuation"><span>Punctuation</span><span class="count" id="punctuationCount">0</span></button>
+          <button class="nav-item" type="button" data-filter="Style"><span>Sentence and paragraph</span><span class="count" id="styleCount">0</span></button>
+          <button class="nav-item" type="button" data-filter="Vocabulary"><span>Vocabulary</span><span class="count" id="vocabularyCount">0</span></button>
           <div class="left-spacer"></div>
-
-          <button
-            id="newDocBtn"
-            class="nav-item"
-            type="button"
-          >
-            <span>＋ New document</span>
-          </button>
-
-          <div class="offline-note">
-            Local analysis
-            <br>
-            <small>
-              Writing checks are performed in your browser
-            </small>
-          </div>
+          <button id="newDocBtn" class="nav-item" type="button"><span>＋ New document</span></button>
+          <div class="offline-note">Local analysis<br><small>Writing checks are performed in your browser</small></div>
         </aside>
-
-
-        <!-- Main editor -->
 
         <main class="main-area">
           <div class="scorebar">
-
             <div class="score-box">
-              <div
-                id="scoreValue"
-                class="score"
-                aria-label="Writing score"
-              >
-                100
-              </div>
-
-              <div class="score-label">
-                Writing score
-              </div>
+              <div id="scoreValue" class="score" aria-label="Writing score">100</div>
+              <div class="score-label">Writing score</div>
             </div>
-
-            <div
-              id="metrics"
-              class="metrics"
-              aria-label="Writing metrics"
-            ></div>
+            <div id="metrics" class="metrics" aria-label="Writing metrics"></div>
           </div>
 
-
-          <!-- Editor and highlight backdrop -->
-
-          <div
-            id="editorScroll"
-            class="editor-scroll"
-          >
-            <div
-              id="backdrop"
-              class="backdrop"
-              aria-hidden="true"
-            ></div>
-
+          <div id="editorScroll" class="editor-scroll">
+            <div id="backdrop" class="backdrop" aria-hidden="true"></div>
             <textarea
               id="editor"
               class="editor"
@@ -513,13 +205,7 @@
             ></textarea>
           </div>
 
-
-          <!-- Document statistics -->
-
-          <footer
-            class="statusbar"
-            aria-label="Document statistics"
-          >
+          <footer class="statusbar" aria-label="Document statistics">
             <span id="wordCount">0 words</span>
             <span id="charCount">0 characters</span>
             <span id="readingTime">0 sec read</span>
@@ -528,45 +214,20 @@
           </footer>
         </main>
 
-
-        <!-- Suggestions panel -->
-
-        <aside
-          class="rightbar"
-          aria-label="Writing suggestions"
-        >
+        <aside class="rightbar" aria-label="Writing suggestions">
           <div class="right-header">
             <h2>Suggestions</h2>
-
-            <span
-              id="suggestionsCount"
-              class="pill"
-              aria-label="Suggestion count"
-            >
-              0
-            </span>
+            <span id="suggestionsCount" class="pill" aria-label="Suggestion count">0</span>
           </div>
-
-          <div
-            id="suggestionsList"
-            class="suggestions-list"
-            aria-live="polite"
-          >
-            <div class="suggestion-card empty">
-              Start typing to check your writing.
-            </div>
+          <div id="suggestionsList" class="suggestions-list" aria-live="polite">
+            <div class="suggestion-card empty">Start typing to check your writing.</div>
           </div>
         </aside>
-
       </div>
     </section>
   </div>
 
-
-  <!-- =======================================================
-       HIDDEN FILE INPUT
-       ======================================================= -->
-
+  <!-- Hidden file input -->
   <input
     id="fileInput"
     type="file"
@@ -574,225 +235,86 @@
     accept=".txt,.text,.log,.md,.markdown,.html,.htm,.csv,.docx,.pdf,text/plain,text/markdown,text/html,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
   >
 
-
-  <!-- =======================================================
-       DOCUMENTS MODAL
-       ======================================================= -->
-
-  <div
-    id="documentsModal"
-    class="modal hidden"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="documentsModalTitle"
-  >
+  <!-- Documents modal -->
+  <div id="documentsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="documentsModalTitle">
     <div class="modal-card">
       <div class="modal-head">
-        <h2 id="documentsModalTitle">
-          Documents
-        </h2>
-
-        <button
-          class="icon-btn"
-          type="button"
-          data-close="documentsModal"
-          aria-label="Close documents window"
-        >
-          ×
-        </button>
+        <h2 id="documentsModalTitle">Documents</h2>
+        <button class="icon-btn" type="button" data-close="documentsModal" aria-label="Close documents window">×</button>
       </div>
-
       <div class="modal-body">
-        <div
-          id="dropZone"
-          class="drop-zone"
-        >
+        <div id="dropZone" class="drop-zone">
           <strong>Drop a file here</strong>
-
           <span>or</span>
-
-          <button
-            id="uploadBtn"
-            class="btn secondary"
-            type="button"
-          >
-            Choose a file
-          </button>
-
-          <small>
-            TXT · MD · HTML · CSV · DOCX · PDF
-          </small>
+          <button id="uploadBtn" class="btn secondary" type="button">Choose a file</button>
+          <small>TXT · MD · HTML · CSV · DOCX · PDF</small>
         </div>
-
-        <div
-          id="fileStatus"
-          class="file-status"
-          role="status"
-          aria-live="polite"
-        ></div>
-
+        <div id="fileStatus" class="file-status" role="status" aria-live="polite"></div>
         <h3>Supported document types</h3>
-
         <div class="documents-help">
-          <p>
-            Text, Markdown, HTML, and CSV files are opened as text.
-            DOCX files require Mammoth. PDF files require PDF.js and
-            must contain selectable text.
-          </p>
+          <p>TXT, Markdown, HTML, and CSV are opened as text. DOCX requires Mammoth. PDF requires PDF.js and selectable text.</p>
         </div>
-
-        <div
-          id="documentsList"
-          class="documents-list"
-        ></div>
+        <div id="documentsList" class="documents-list"></div>
       </div>
     </div>
   </div>
 
-
-  <!-- =======================================================
-       ENHANCER MODAL
-       ======================================================= -->
-
-  <div
-    id="enhancerModal"
-    class="modal hidden"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="enhancerModalTitle"
-  >
+  <!-- Enhancer modal -->
+  <div id="enhancerModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="enhancerModalTitle">
     <div class="modal-card large">
       <div class="modal-head">
-        <h2 id="enhancerModalTitle">
-          Enhance writing
-        </h2>
-
-        <button
-          class="icon-btn"
-          type="button"
-          data-close="enhancerModal"
-          aria-label="Close writing enhancer"
-        >
-          ×
-        </button>
+        <h2 id="enhancerModalTitle">Enhance writing</h2>
+        <button class="icon-btn" type="button" data-close="enhancerModal" aria-label="Close writing enhancer">×</button>
       </div>
 
       <div class="modal-body">
-
         <div class="enhance-controls">
           <label for="enhancerMode">
             Mode
-
             <select id="enhancerMode">
-              <option value="standard">
-                Standard
-              </option>
-
-              <option value="professional">
-                Professional
-              </option>
-
-              <option value="academic">
-                Academic
-              </option>
-
-              <option value="formal">
-                Formal
-              </option>
-
-              <option value="simple">
-                Simple
-              </option>
-
-              <option value="concise">
-                Concise
-              </option>
+              <option value="standard">Standard</option>
+              <option value="professional">Professional</option>
+              <option value="academic">Academic</option>
+              <option value="formal">Formal</option>
+              <option value="simple">Simple</option>
+              <option value="concise">Concise</option>
             </select>
           </label>
-
-          <span>
-            Suggestions are advisory. Review all changes before
-            applying them.
-          </span>
+          <span>Suggestions are advisory. Review all changes before applying them.</span>
         </div>
-
 
         <div class="compare">
           <div>
             <h3>Original</h3>
-
-            <pre
-              id="enhanceOriginal"
-              aria-label="Original writing"
-            ></pre>
+            <pre id="enhanceOriginal" aria-label="Original writing"></pre>
           </div>
-
           <div>
             <h3>Enhanced</h3>
-
-            <pre
-              id="enhanceResult"
-              aria-label="Enhanced writing"
-            ></pre>
+            <pre id="enhanceResult" aria-label="Enhanced writing"></pre>
           </div>
         </div>
 
-
-        <h3 class="changes-heading">
-          Changes
-        </h3>
-
-        <div
-          id="enhanceChanges"
-          class="changes"
-          aria-live="polite"
-        ></div>
+        <h3 class="changes-heading">Changes</h3>
+        <div id="enhanceChanges" class="changes" aria-live="polite"></div>
       </div>
 
       <div class="modal-foot">
-        <button
-          class="btn ghost"
-          type="button"
-          data-close="enhancerModal"
-        >
-          Keep original
-        </button>
-
-        <button
-          id="applyEnhanceBtn"
-          class="btn primary"
-          type="button"
-        >
-          Apply enhancement
-        </button>
+        <button class="btn ghost" type="button" data-close="enhancerModal">Keep original</button>
+        <button id="applyEnhanceBtn" class="btn primary" type="button">Apply enhancement</button>
       </div>
     </div>
   </div>
 
-
   <!-- Toast notifications -->
+  <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
-  <div
-    id="toast"
-    role="status"
-    aria-live="polite"
-    aria-atomic="true"
-  ></div>
-
-
-  <!-- =======================================================
-       APPLICATION SCRIPTS
-
-       Do not change this loading order.
-       ======================================================= -->
-
+  <!-- Application scripts. Keep this exact order. -->
   <script src="config.js"></script>
-  <script src="config.js"></script>
-libs/mammoth.browser.min.jsscript>
-libs/pdf.min.jsscript>
-<script src="data/dictionary.js"></scriptript>
-<script src.jsscript>
-<script src="app.js"></script>
+  <script src="libs/mammoth.browser.min.js"></script>
+  <script src="libs/pdf.min.js"></script>
+  <script src="data/dictionary.js"></script>
+  <script src="js/grammar.js"></script>
+  <script src="js/enhancer.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
